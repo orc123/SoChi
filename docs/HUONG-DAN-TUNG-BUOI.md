@@ -44,7 +44,7 @@
 ## 2. Bản chất kiến trúc & Nguyên lý
 - **Vì sao phải ghim SDK:** máy này cài song song nhiều SDK (2.0 → 10.0). Không có `global.json`, MSBuild chọn bản mới nhất tìm thấy — hôm nay đúng, ngày mai cài thêm bản khác là lỗi khó hiểu.
 - **Workload MAUI tách rời SDK:** `dotnet new maui` chỉ chạy được khi workload `maui-*` đã cài cho **đúng** bản SDK đang active.
-- **Vì sao chuẩn hóa thư mục ngay:** Visual Studio tạo project ở thư mục ngang hàng solution, còn toàn bộ 15 buổi dưới đây viết theo layout `src/Client`, `src/Api`, `src/Shared`. Sửa lệch đường dẫn một lần ở đây tốn 10 phút; để đến Buổi 12 mới sửa thì phải dò lại hàng chục lệnh `dotnet add reference` và `using`.
+- **Vì sao chuẩn hóa thư mục ngay:** Visual Studio tạo project ở thư mục ngang hàng solution, còn toàn bộ 15 buổi dưới đây viết theo layout `src/Client/SoChi.Client`, `src/Api/SoChi.Api`, `src/Shared/SoChi.Shared`. Sửa lệch đường dẫn một lần ở đây tốn 10 phút; để đến Buổi 12 mới sửa thì phải dò lại hàng chục lệnh `dotnet add reference` và `using`.
 
 ## 3. Các bước thực hành chi tiết
 
@@ -87,48 +87,62 @@ Kiểm tra bằng CLI:
 ```
 Emulator chạy chậm như rùa hoặc không boot được thường là do thiếu tăng tốc phần cứng. Bật **Hyper-V** và **Windows Hypervisor Platform** trong "Turn Windows features on or off", khởi động lại máy.
 
-### Bước 0.4: Đối chiếu và chuẩn hóa cấu trúc thư mục
+### Bước 0.4: Đối chiếu cấu trúc thư mục
 
-Đối chiếu giữa tài liệu và repo do Visual Studio sinh ra:
+Repo thật đặt tại `d:\Project\MAUI\SoChi` — đây cũng là **thư mục gốc của Git**. Layout theo quy ước *mỗi project nằm trong thư mục riêng, bên trong một thư mục nhóm*:
 
-| Tài liệu 15 buổi dùng | Repo Visual Studio tạo ra |
-|---|---|
-| `SoChi.sln` ở thư mục gốc | `SoChi/SoChi.slnx` |
-| `src/Client/SoChi.Client.csproj` | `SoChi/SoChi.Client/SoChi.Client.csproj` |
-| `src/Api`, `src/Shared`, `tests/` | chưa tồn tại |
-
-Hai điểm cần biết:
-
-1. **`.slnx` là định dạng solution mới** (XML, thay cho `.sln` cú pháp cũ). Nó chạy bình thường với `dotnet build`, `dotnet sln add`, `dotnet test` — **không cần đổi về `.sln`**.
-2. Trong `.slnx`, `<Folder Name="/src/Client/">` chỉ là **thư mục ảo hiển thị trong IDE**. Nó không tạo thư mục thật trên đĩa. Đó là lý do bạn thấy `src/Client` rỗng còn project thật nằm ở `SoChi.Client/`.
-
-Lệnh chuẩn hóa — chạy từ `d:\Project\MAUI\SoChi`, **đóng Visual Studio trước** (file trong `.vs` và `bin` bị khóa):
-```powershell
-Remove-Item -Recurse -Force .vs -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force SoChi.Client\bin, SoChi.Client\obj -ErrorAction SilentlyContinue
-Move-Item SoChi.Client src\Client
+```
+SoChi/                       ← gốc repo (chứa .git)
+  SoChi.slnx
+  global.json
+  Directory.Build.props
+  .gitignore   .gitattributes
+  docs/
+  src/
+    Client/SoChi.Client/SoChi.Client.csproj    # app MAUI
+    Api/SoChi.Api/SoChi.Api.csproj             # Web API
+    Shared/SoChi.Shared/SoChi.Shared.csproj    # DTO dùng chung
+  tests/
+    SoChi.Client.Tests/      # tạo ở Buổi 11
+    SoChi.Api.Tests/         # tạo ở Buổi 12
 ```
 
-Mở `SoChi.slnx`, sửa đường dẫn project:
+Toàn bộ tài liệu này (19 buổi + 2 phụ lục) đã dùng đúng các đường dẫn trên. Ba điều cần nhớ để không gõ nhầm:
+
+1. **Thư mục nhóm và thư mục project là hai cấp khác nhau.** `src/Client` là nhóm, `src/Client/SoChi.Client` mới là project. Mọi lệnh `dotnet` phải trỏ tới cấp trong cùng — nơi chứa file `.csproj`.
+2. **Thư mục test tên là `tests/`** (số nhiều, đúng quy ước phổ biến trong hệ sinh thái .NET), và mỗi project test nằm thẳng trong đó, không có thêm cấp nhóm như bên `src/`.
+3. Lợi ích của layout này: sau này muốn thêm `src/Client/SoChi.Client.Maui.Tests` hay tách một thư viện con cho Client thì đã có sẵn chỗ, không phải sắp xếp lại.
+
+**Về file `SoChi.slnx`.** Đây là định dạng solution mới (XML, thay cho `.sln` cú pháp cũ) và chạy bình thường với `dotnet build`, `dotnet sln`, `dotnet test`. Điểm dễ nhầm: các thẻ `<Folder Name="/src/Client/">` chỉ là **thư mục ảo hiển thị trong IDE**, không tạo thư mục thật trên đĩa. Thứ trỏ tới file thật là thuộc tính `Path` của `<Project>`:
+
 ```xml
-<Project Path="src/Client/SoChi.Client.csproj" Id="26469d38-ee42-4422-9f13-8cbea88b37a5">
+<Folder Name="/src/Client/">
+  <Project Path="src/Client/SoChi.Client/SoChi.Client.csproj" ... />
+</Folder>
 ```
 
-Tạo nốt các project còn lại (Buổi 01 sẽ dùng ngay `Shared`, Buổi 12 dùng `Api`):
+Nếu `src/Api` hoặc `src/Shared` chưa có, tạo và nối dây như sau (chạy từ gốc repo):
+
 ```powershell
-dotnet new webapi   -n SoChi.Api    -o src/Api
-dotnet new classlib -n SoChi.Shared -o src/Shared
+dotnet new webapi   -n SoChi.Api    -o src/Api/SoChi.Api
+dotnet new classlib -n SoChi.Shared -o src/Shared/SoChi.Shared
 
-dotnet sln SoChi.slnx add src/Api/SoChi.Api.csproj src/Shared/SoChi.Shared.csproj
+dotnet sln SoChi.slnx add src/Api/SoChi.Api/SoChi.Api.csproj src/Shared/SoChi.Shared/SoChi.Shared.csproj
 
-dotnet add src/Client/SoChi.Client.csproj reference src/Shared/SoChi.Shared.csproj
-dotnet add src/Api/SoChi.Api.csproj       reference src/Shared/SoChi.Shared.csproj
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj reference src/Shared/SoChi.Shared/SoChi.Shared.csproj
+dotnet add src/Api/SoChi.Api/SoChi.Api.csproj          reference src/Shared/SoChi.Shared/SoChi.Shared.csproj
 ```
 
-> **Nếu bạn quyết định giữ nguyên layout cũ** (`SoChi.Client/` thay vì `src/Client/`): hoàn toàn được, nhưng phải tự đổi mọi đường dẫn `src/Client` trong 15 buổi thành `SoChi.Client`. Ghi lại quyết định đó vào `README.md` để 3 tuần sau không tự làm rối mình.
+Kiểm tra hướng tham chiếu đã đúng — cả hai đều trỏ **vào** `Shared`, và `Shared` không trỏ đi đâu cả:
+
+```powershell
+dotnet list src/Client/SoChi.Client/SoChi.Client.csproj reference
+dotnet list src/Api/SoChi.Api/SoChi.Api.csproj reference
+dotnet list src/Shared/SoChi.Shared/SoChi.Shared.csproj reference
+```
 
 ### Bước 0.5: Ba file cấu hình cấp solution
-Tạo `global.json` ở `d:\Project\MAUI\SoChi`:
+Tạo `global.json` ở gốc repo (`d:\Project\MAUI\SoChi`):
 ```json
 {
   "sdk": {
@@ -136,6 +150,11 @@ Tạo `global.json` ở `d:\Project\MAUI\SoChi`:
     "rollForward": "latestFeature"
   }
 }
+```
+
+Xác nhận nó có tác dụng — lệnh sau phải in ra đúng bản đã ghim:
+```powershell
+dotnet --version
 ```
 
 Tạo `Directory.Build.props` cùng cấp:
@@ -158,29 +177,62 @@ git add .
 git commit -m "chore(session-00): bootstrap solution structure and toolchain config"
 ```
 
-### Bước 0.6: Build thử toàn bộ
+### Bước 0.6: Cài Android SDK Platform khớp với workload
+
+Đây là lỗi gần như ai cũng gặp ở lần build Android đầu tiên, và thông báo lỗi thì không nói thẳng ra:
+
+```
+error XA5207: Could not find android.jar for API level 36.
+Expected: ...\Android\Sdk\platforms\android-36\android.jar
+```
+
+Nguyên nhân: workload `android` biên dịch theo một API level cố định (ví dụ 36), nhưng Android SDK trên máy chỉ có các platform cũ hơn. Ba target còn lại (`windows`, `ios`, `maccatalyst`) vẫn build xanh, nên rất dễ tưởng project hỏng.
+
+Xem đang có những platform nào:
+```powershell
+Get-ChildItem "$env:LOCALAPPDATA\Android\Sdk\platforms"
+```
+
+Cài platform còn thiếu — MSBuild tự tải đúng bản mà project cần:
+```powershell
+dotnet build src/Client/SoChi.Client/SoChi.Client.csproj `
+  -t:InstallAndroidDependencies -f net10.0-android `
+  -p:AndroidSdkDirectory="$env:LOCALAPPDATA\Android\Sdk" `
+  -p:AcceptAndroidSDKLicenses=True
+```
+
+> **API của emulator không cần trùng API biên dịch.** Emulator API 35 chạy tốt app biên dịch theo API 36, vì `SupportedOSPlatformVersion` của project là 21.0 — đó mới là phiên bản Android tối thiểu. API 36 chỉ cần cho khâu *biên dịch*, không phải khâu *chạy*.
+
+### Bước 0.7: Build thử toàn bộ
 ```powershell
 dotnet build SoChi.slnx
-dotnet build src/Client -f net10.0-windows10.0.19041.0 -t:Run
+dotnet build src/Client/SoChi.Client/SoChi.Client.csproj -f net10.0-windows10.0.19041.0 -t:Run
 ```
 App mặc định (`MainPage.xaml` với nút Click me) hiện lên là đạt. Buổi 02 sẽ thay `MainPage` bằng `AppShell` — chưa xóa nó vội, vì `App.xaml.cs` còn đang trỏ tới.
 
 ## 4. Bẫy thường gặp (Pitfalls)
-- **Lỗi:** `Move-Item` báo "The process cannot access the file".
-  - **Nguyên nhân:** Visual Studio hoặc `MSBuild.exe` còn giữ file trong `bin`/`obj`/`.vs`. Đóng IDE, kết thúc tiến trình `MSBuild.exe` trong Task Manager rồi thử lại.
-- **Lỗi:** Sau khi move, mở solution báo "The project file could not be found".
-  - **Nguyên nhân:** Quên sửa `Path` trong `SoChi.slnx` ở Bước 0.4.
+- **Lỗi:** `error XA5207: Could not find android.jar for API level 36` khi build solution, trong khi Windows/iOS/MacCatalyst vẫn xanh.
+  - **Nguyên nhân:** Thiếu Android SDK Platform tương ứng. Xem Bước 0.6.
+- **Lỗi:** `dotnet build` báo không tìm thấy project, hoặc `MSB1003: Specify a project or solution file`.
+  - **Nguyên nhân:** Trỏ vào thư mục nhóm (`src/Client`) thay vì thư mục chứa `.csproj` (`src/Client/SoChi.Client`). Đây là nhầm lẫn phổ biến nhất với layout hai cấp.
+- **Lỗi:** Mở solution trong Visual Studio báo "The project file could not be found".
+  - **Nguyên nhân:** Thuộc tính `Path` trong `SoChi.slnx` không khớp vị trí thật của `.csproj`. Nhớ rằng `<Folder>` chỉ là thư mục ảo, sửa nó không làm project di chuyển.
 - **Lỗi:** `dotnet workload list` trống dù Visual Studio đã cài .NET MAUI.
   - **Nguyên nhân:** VS quản lý workload theo bản SDK riêng của nó. Sau khi tạo `global.json` ghim bản SDK, chạy lại `dotnet workload install maui` để cài cho đúng bản đó.
 - **Lỗi:** `TreatWarningsAsErrors` làm build đỏ ngay từ project MAUI mặc định.
-  - **Nguyên nhân:** Template sinh vài warning nhỏ. Sửa cho sạch — đừng tắt cờ này, nó là thứ giữ codebase lành mạnh suốt 15 buổi.
+  - **Nguyên nhân:** Template sinh vài warning nhỏ. Sửa cho sạch — đừng tắt cờ này, nó là thứ giữ codebase lành mạnh suốt 19 buổi.
+- **Lỗi:** Emulator chạy chậm như rùa hoặc không boot.
+  - **Nguyên nhân:** Thiếu tăng tốc phần cứng. Bật **Hyper-V** và **Windows Hypervisor Platform** trong "Turn Windows features on or off", khởi động lại máy.
 
 ## 5. Checklist nghiệm thu Buổi 00
 - [ ] `dotnet workload list` liệt kê đủ `maui-windows` và `android`.
-- [ ] `dotnet dev-certs https --check` báo chứng chỉ hợp lệ và đã được tin.
+- [ ] `dotnet --version` in ra đúng phiên bản ghi trong `global.json`.
+- [ ] `dotnet dev-certs https --check --trust` báo có chứng chỉ **trusted** (chỉ `--check` thôi là chưa đủ — nó không kiểm tra tính tin cậy).
+- [ ] `Get-ChildItem "$env:LOCALAPPDATA\Android\Sdk\platforms"` có platform khớp API mà project biên dịch.
 - [ ] Android emulator boot được tới màn hình chính (chưa cần chạy app).
-- [ ] Cấu trúc trên đĩa đúng: `src/Client`, `src/Api`, `src/Shared` đều có `.csproj`.
-- [ ] `dotnet build SoChi.slnx` xanh, không warning.
+- [ ] Ba file `.csproj` nằm đúng chỗ: `src/Client/SoChi.Client/`, `src/Api/SoChi.Api/`, `src/Shared/SoChi.Shared/`.
+- [ ] `dotnet list ... reference` cho thấy Client và Api đều tham chiếu Shared, còn Shared không tham chiếu ai.
+- [ ] `dotnet build SoChi.slnx` xanh **cả bốn target**, không warning.
 - [ ] `git log --oneline` hiện commit đầu tiên.
 
 ---
@@ -211,18 +263,18 @@ Mở PowerShell tại thư mục gốc của dự án (`d:\Project\MAUI`):
 dotnet new sln -n SoChi
 
 # Tạo 3 project theo cấu trúc src/
-dotnet new maui        -n SoChi.Client -o src/Client
-dotnet new webapi      -n SoChi.Api    -o src/Api
-dotnet new classlib    -n SoChi.Shared -o src/Shared
+dotnet new maui        -n SoChi.Client -o src/Client/SoChi.Client
+dotnet new webapi      -n SoChi.Api    -o src/Api/SoChi.Api
+dotnet new classlib    -n SoChi.Shared -o src/Shared/SoChi.Shared
 
 # Đưa các project vào solution
-dotnet sln add src/Client/SoChi.Client.csproj
-dotnet sln add src/Api/SoChi.Api.csproj
-dotnet sln add src/Shared/SoChi.Shared.csproj
+dotnet sln add src/Client/SoChi.Client/SoChi.Client.csproj
+dotnet sln add src/Api/SoChi.Api/SoChi.Api.csproj
+dotnet sln add src/Shared/SoChi.Shared/SoChi.Shared.csproj
 
 # Thiết lập quan hệ tham chiếu
-dotnet add src/Client/SoChi.Client.csproj reference src/Shared/SoChi.Shared.csproj
-dotnet add src/Api/SoChi.Api.csproj reference src/Shared/SoChi.Shared.csproj
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj reference src/Shared/SoChi.Shared/SoChi.Shared.csproj
+dotnet add src/Api/SoChi.Api/SoChi.Api.csproj reference src/Shared/SoChi.Shared/SoChi.Shared.csproj
 ```
 
 ### Bước 1.2: Tạo các file cấu hình toàn cục
@@ -254,17 +306,17 @@ dotnet new gitignore
 
 ### Bước 1.3: Cài đặt thư viện MVVM cho Client
 ```powershell
-dotnet add src/Client/SoChi.Client.csproj package CommunityToolkit.Mvvm
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package CommunityToolkit.Mvvm
 ```
 
-### Bước 1.4: Tổ chức thư mục chuẩn trong `src/Client`
+### Bước 1.4: Tổ chức thư mục chuẩn trong `src/Client/SoChi.Client`
 Tạo các thư mục chức năng:
-- `src/Client/Models/`
-- `src/Client/Views/`
-- `src/Client/ViewModels/`
-- `src/Client/Services/`
-- `src/Client/Converters/`
-- `src/Client/Controls/`
+- `src/Client/SoChi.Client/Models/`
+- `src/Client/SoChi.Client/Views/`
+- `src/Client/SoChi.Client/ViewModels/`
+- `src/Client/SoChi.Client/Services/`
+- `src/Client/SoChi.Client/Converters/`
+- `src/Client/SoChi.Client/Controls/`
 
 ### Bước 1.5: Khởi tạo Git và Commit
 ```powershell
@@ -274,10 +326,10 @@ git commit -m "feat: setup initial solution structure with Client, Api, and Shar
 ```
 
 ## 4. Bẫy thường gặp (Pitfalls)
-- **Lỗi:** Gõ nhầm lệnh build khi chưa chỉ định framework: `dotnet build src/Client`.
+- **Lỗi:** Gõ nhầm lệnh build khi chưa chỉ định framework: `dotnet build src/Client/SoChi.Client`.
   - **Cách khắc phục:** Project MAUI đa nền tảng (`TargetFrameworks` số nhiều) nên bắt buộc phải chỉ định `-f`, ví dụ:
     ```powershell
-    dotnet build src/Client/SoChi.Client.csproj -f net10.0-windows10.0.19041.0
+    dotnet build src/Client/SoChi.Client/SoChi.Client.csproj -f net10.0-windows10.0.19041.0
     ```
 - **Lỗi:** `Shared` vô tình tham chiếu ngược `Client` hoặc `Api`.
   - **Cách khắc phục:** Mở `SoChi.Shared.csproj`, kiểm tra đảm bảo không có thẻ `<ProjectReference>` nào trong file này.
@@ -286,7 +338,7 @@ git commit -m "feat: setup initial solution structure with Client, Api, and Shar
 - [ ] Lệnh `dotnet build` tại thư mục gốc chạy thành công 100% không báo lỗi.
 - [ ] Chạy app trên Windows bằng lệnh:
   ```powershell
-  dotnet build src/Client/SoChi.Client.csproj -f net10.0-windows10.0.19041.0 -t:Run
+  dotnet build src/Client/SoChi.Client/SoChi.Client.csproj -f net10.0-windows10.0.19041.0 -t:Run
   ```
 - [ ] Cửa sổ app hiển thị bình thường.
 - [ ] Lịch sử `git log` có commit khởi tạo.
@@ -312,7 +364,7 @@ git commit -m "feat: setup initial solution structure with Client, Api, and Shar
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 2.1: Tạo 5 ViewModel cơ bản dùng CommunityToolkit.Mvvm
-Ví dụ tạo `OverviewViewModel.cs` trong `src/Client/ViewModels/`:
+Ví dụ tạo `OverviewViewModel.cs` trong `src/Client/SoChi.Client/ViewModels/`:
 ```csharp
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -332,7 +384,7 @@ Tạo tương tự cho:
 - `TransactionFormViewModel.cs` (Modal Thêm/Sửa)
 
 ### Bước 2.2: Tạo các trang Views và gán BindingContext qua DI
-Ví dụ tạo `OverviewPage.xaml` trong `src/Client/Views/`:
+Ví dụ tạo `OverviewPage.xaml` trong `src/Client/SoChi.Client/Views/`:
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -364,7 +416,7 @@ public partial class OverviewPage : ContentPage
 ```
 
 ### Bước 2.3: Xây dựng AppShell.xaml với TabBar 5 tabs
-Cập nhật `src/Client/AppShell.xaml`:
+Cập nhật `src/Client/SoChi.Client/AppShell.xaml`:
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <Shell
@@ -483,12 +535,12 @@ private async Task CancelAsync()
 
 ### Bước 3.1: Cài đặt thư viện SQLite
 ```powershell
-dotnet add src/Client/SoChi.Client.csproj package sqlite-net-pcl
-dotnet add src/Client/SoChi.Client.csproj package SQLitePCLRaw.bundle_green
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package sqlite-net-pcl
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package SQLitePCLRaw.bundle_green
 ```
 
 ### Bước 3.2: Định nghĩa các Enum và Model
-Tạo file `src/Client/Models/Enums.cs`:
+Tạo file `src/Client/SoChi.Client/Models/Enums.cs`:
 ```csharp
 namespace SoChi.Client.Models;
 
@@ -505,7 +557,7 @@ public enum SyncState
 }
 ```
 
-Tạo file `src/Client/Models/Category.cs`:
+Tạo file `src/Client/SoChi.Client/Models/Category.cs`:
 ```csharp
 using SQLite;
 
@@ -535,7 +587,7 @@ public class Category
 }
 ```
 
-Tạo file `src/Client/Models/Transaction.cs`:
+Tạo file `src/Client/SoChi.Client/Models/Transaction.cs`:
 ```csharp
 using SQLite;
 
@@ -567,7 +619,7 @@ public class Transaction
 ```
 
 ### Bước 3.3: Xây dựng Database Service với Lazy Async Init
-Tạo interface `src/Client/Services/ITransactionRepository.cs`:
+Tạo interface `src/Client/SoChi.Client/Services/ITransactionRepository.cs`:
 ```csharp
 using SoChi.Client.Models;
 
@@ -586,7 +638,7 @@ public interface ITransactionRepository
 }
 ```
 
-Tạo class triển khai `src/Client/Services/SqliteTransactionRepository.cs`:
+Tạo class triển khai `src/Client/SoChi.Client/Services/SqliteTransactionRepository.cs`:
 ```csharp
 using SQLite;
 using SoChi.Client.Models;
@@ -960,7 +1012,7 @@ Trong `TransactionsPage.xaml`:
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 4B.1: Mở rộng Repository
-Bổ sung vào `src/Client/Services/ITransactionRepository.cs`:
+Bổ sung vào `src/Client/SoChi.Client/Services/ITransactionRepository.cs`:
 ```csharp
 Task<Category?> GetCategoryByIdAsync(Guid id);
 Task<int> SoftDeleteCategoryAsync(Guid id);
@@ -1001,7 +1053,7 @@ public async Task<int> SoftDeleteCategoryAsync(Guid id)
 Lưu ý `GetCategoryByIdAsync` **không** lọc `!IsDeleted`: giao dịch cũ vẫn cần tra ra tên và màu của danh mục đã bị xóa để hiển thị lịch sử. Chỉ danh sách chọn lúc nhập liệu (`GetCategoriesAsync`) mới lọc.
 
 ### Bước 4B.2: `CategoriesViewModel`
-Tạo `src/Client/ViewModels/CategoriesViewModel.cs`:
+Tạo `src/Client/SoChi.Client/ViewModels/CategoriesViewModel.cs`:
 ```csharp
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -1362,7 +1414,7 @@ builder.Services.AddTransient<CategoryFormPage>();
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 5.1: Xây dựng Model Grouping
-Tạo file `src/Client/Models/TransactionGroup.cs`:
+Tạo file `src/Client/SoChi.Client/Models/TransactionGroup.cs`:
 ```csharp
 using System.Collections.ObjectModel;
 
@@ -1547,7 +1599,7 @@ Cập nhật `TransactionsPage.xaml`:
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Xây dựng Custom Keypad Control
-Tạo ContentView `src/Client/Controls/NumericKeypadView.xaml`:
+Tạo ContentView `src/Client/SoChi.Client/Controls/NumericKeypadView.xaml`:
 ```xml
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
@@ -1669,7 +1721,7 @@ private void Backspace()
 ```
 
 ### Bước 3.3: Viết Value Converters
-Tạo file `src/Client/Converters/TransactionConverters.cs`:
+Tạo file `src/Client/SoChi.Client/Converters/TransactionConverters.cs`:
 ```csharp
 using System.Globalization;
 using SoChi.Client.Models;
@@ -1708,7 +1760,7 @@ public class KindToColorConverter : IValueConverter
 ### Bước 3.4: Tích hợp Snackbar Hoàn Tác (Undo)
 Cài đặt package:
 ```powershell
-dotnet add src/Client/SoChi.Client.csproj package CommunityToolkit.Maui
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package CommunityToolkit.Maui
 ```
 Đăng ký trong `MauiProgram.cs`:
 ```csharp
@@ -1776,7 +1828,7 @@ await snackbar.Show();
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Tạo Data Model cho biểu đồ
-Tạo file `src/Client/Models/ChartItem.cs`:
+Tạo file `src/Client/SoChi.Client/Models/ChartItem.cs`:
 ```csharp
 namespace SoChi.Client.Models;
 
@@ -1789,7 +1841,7 @@ public class ChartSegment
 ```
 
 ### Bước 3.2: Viết lớp Drawable tính toán và vẽ Donut Chart
-Tạo file `src/Client/Controls/DonutChartDrawable.cs`:
+Tạo file `src/Client/SoChi.Client/Controls/DonutChartDrawable.cs`:
 ```csharp
 using SoChi.Client.Models;
 
@@ -1859,7 +1911,7 @@ public class DonutChartDrawable : IDrawable
 ```
 
 ### Bước 3.3: Tạo Custom Control bao bọc `GraphicsView`
-Tạo file `src/Client/Controls/DonutChartView.cs`:
+Tạo file `src/Client/SoChi.Client/Controls/DonutChartView.cs`:
 ```csharp
 using SoChi.Client.Models;
 
@@ -1988,7 +2040,7 @@ Trong `OverviewPage.xaml`:
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Tạo Model cho cột 6 tháng
-Tạo file `src/Client/Models/MonthlyBarData.cs`:
+Tạo file `src/Client/SoChi.Client/Models/MonthlyBarData.cs`:
 ```csharp
 namespace SoChi.Client.Models;
 
@@ -2001,7 +2053,7 @@ public class MonthlyBarData
 ```
 
 ### Bước 3.2: Viết lớp Drawable cho Bar Chart
-Tạo file `src/Client/Controls/BarChartDrawable.cs`:
+Tạo file `src/Client/SoChi.Client/Controls/BarChartDrawable.cs`:
 ```csharp
 using SoChi.Client.Models;
 
@@ -2073,7 +2125,7 @@ public class BarChartDrawable : IDrawable
 ```
 
 ### Bước 3.3: Tạo Custom Control `BarChartView`
-Tạo file `src/Client/Controls/BarChartView.cs`:
+Tạo file `src/Client/SoChi.Client/Controls/BarChartView.cs`:
 ```csharp
 using SoChi.Client.Models;
 
@@ -2191,7 +2243,7 @@ Trong `StatisticsPage.xaml`:
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Cấu hình quyền trong `Platforms/Android/AndroidManifest.xml`
-Mở `src/Client/Platforms/Android/AndroidManifest.xml` thêm vào trong thẻ `<manifest>`:
+Mở `src/Client/SoChi.Client/Platforms/Android/AndroidManifest.xml` thêm vào trong thẻ `<manifest>`:
 ```xml
 <uses-permission android:name="android.permission.CAMERA" />
 <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -2199,7 +2251,7 @@ Mở `src/Client/Platforms/Android/AndroidManifest.xml` thêm vào trong thẻ `
 ```
 
 ### Bước 3.2: Viết Service quản lý File và Media
-Tạo interface `src/Client/Services/IMediaService.cs`:
+Tạo interface `src/Client/SoChi.Client/Services/IMediaService.cs`:
 ```csharp
 namespace SoChi.Client.Services;
 
@@ -2210,7 +2262,7 @@ public interface IMediaService
 }
 ```
 
-Tạo class triển khai `src/Client/Services/MediaService.cs`:
+Tạo class triển khai `src/Client/SoChi.Client/Services/MediaService.cs`:
 ```csharp
 namespace SoChi.Client.Services;
 
@@ -2356,7 +2408,7 @@ private void RemoveReceipt()
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Quản lý Theme với Preferences
-Tạo file `src/Client/Services/ThemeService.cs`:
+Tạo file `src/Client/SoChi.Client/Services/ThemeService.cs`:
 ```csharp
 namespace SoChi.Client.Services;
 
@@ -2436,7 +2488,7 @@ private async Task ExportCsvAsync()
 ### Bước 3.4: Xác thực sinh trắc học vân tay
 Cài đặt package hỗ trợ Biometric (hoặc kiểm tra phương thức `BiometricAuthentication`):
 ```powershell
-dotnet add src/Client/SoChi.Client.csproj package Plugin.Fingerprint
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package Plugin.Fingerprint
 ```
 Sử dụng trong `SettingsViewModel.cs` để kích hoạt:
 ```csharp
@@ -2492,7 +2544,7 @@ private async Task ToggleBiometricLockAsync(bool isEnabled)
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Tính toán hạn mức và cảnh báo màu sắc
-Tạo helper `src/Client/Helpers/BudgetCalculator.cs`:
+Tạo helper `src/Client/SoChi.Client/Helpers/BudgetCalculator.cs`:
 ```csharp
 namespace SoChi.Client.Helpers;
 
@@ -2562,13 +2614,13 @@ private async Task PerformSearchAsync(string keyword, CancellationToken token)
 ### Bước 3.3: Khởi tạo Project Unit Test
 Tại thư mục gốc:
 ```powershell
-dotnet new xunit -n SoChi.Client.Tests -o tests/Client.Tests
-dotnet sln add tests/Client.Tests/SoChi.Client.Tests.csproj
-dotnet add tests/Client.Tests/SoChi.Client.Tests.csproj reference src/Client/SoChi.Client.csproj
+dotnet new xunit -n SoChi.Client.Tests -o tests/SoChi.Client.Tests
+dotnet sln add tests/SoChi.Client.Tests/SoChi.Client.Tests.csproj
+dotnet add tests/SoChi.Client.Tests/SoChi.Client.Tests.csproj reference src/Client/SoChi.Client/SoChi.Client.csproj
 ```
 
 ### Bước 3.4: Viết các Unit Test kiểm thử logic nghiệp vụ
-Tạo file `tests/Client.Tests/BudgetCalculatorTests.cs`:
+Tạo file `tests/SoChi.Client.Tests/BudgetCalculatorTests.cs`:
 ```csharp
 using SoChi.Client.Helpers;
 using Xunit;
@@ -2602,7 +2654,7 @@ public class BudgetCalculatorTests
 }
 ```
 
-Tạo file `tests/Client.Tests/TransactionGroupingTests.cs`:
+Tạo file `tests/SoChi.Client.Tests/TransactionGroupingTests.cs`:
 ```csharp
 using SoChi.Client.Models;
 using Xunit;
@@ -2646,8 +2698,8 @@ public class TransactionGroupingTests
 **Thuộc chặng:** Chặng 7 (Phần 1) | **Thời lượng:** ~3 giờ
 
 ## 1. Mục tiêu buổi học (Definition of Done)
-- Hoàn thiện mã nguồn backend ASP.NET Core Web API trong project `src/Api`.
-- Di chuyển toàn bộ Contracts, DTOs (Data Transfer Objects) và Hằng số Routes sang project `src/Shared`.
+- Hoàn thiện mã nguồn backend ASP.NET Core Web API trong project `src/Api/SoChi.Api`.
+- Di chuyển toàn bộ Contracts, DTOs (Data Transfer Objects) và Hằng số Routes sang project `src/Shared/SoChi.Shared`.
 - Thiết lập **PostgreSQL** cho Server qua EF Core + Npgsql (bản cài native trên Windows).
 - Xây dựng chức năng **Xác thực JWT (JSON Web Token)**: Đăng ký tài khoản (`/api/auth/register`), Đăng nhập (`/api/auth/login`).
 - Xây dựng các Endpoint CRUD dữ liệu đồng bộ: `/api/sync/pull` và `/api/sync/push` có gắn xác thực `[Authorize]`.
@@ -2663,8 +2715,8 @@ public class TransactionGroupingTests
 
 ## 3. Các bước thực hành chi tiết
 
-### Bước 3.1: Định nghĩa DTOs trong `src/Shared`
-Tạo file `src/Shared/Dtos/AuthDtos.cs`:
+### Bước 3.1: Định nghĩa DTOs trong `src/Shared/SoChi.Shared`
+Tạo file `src/Shared/SoChi.Shared/Dtos/AuthDtos.cs`:
 ```csharp
 namespace SoChi.Shared.Dtos;
 
@@ -2673,7 +2725,7 @@ public record LoginRequest(string Email, string Password);
 public record AuthResponse(string Token, string Email, string FullName, Guid UserId);
 ```
 
-Tạo file `src/Shared/Dtos/SyncDtos.cs`:
+Tạo file `src/Shared/SoChi.Shared/Dtos/SyncDtos.cs`:
 ```csharp
 namespace SoChi.Shared.Dtos;
 
@@ -2686,7 +2738,7 @@ public record SyncPushRequest(List<CategorySyncDto> Categories, List<Transaction
 public record SyncPullResponse(List<CategorySyncDto> Categories, List<TransactionSyncDto> Transactions, DateTime ServerTimeUtc);
 ```
 
-Tạo file `src/Shared/ApiRoutes.cs`:
+Tạo file `src/Shared/SoChi.Shared/ApiRoutes.cs`:
 ```csharp
 namespace SoChi.Shared;
 
@@ -2699,9 +2751,9 @@ public static class ApiRoutes
 }
 ```
 
-### Bước 3.2: Cài PostgreSQL, cấu hình EF Core cho `src/Api`
+### Bước 3.2: Cài PostgreSQL, cấu hình EF Core cho `src/Api/SoChi.Api`
 
-> **Ranh giới cần nắm rõ trước khi làm:** PostgreSQL chỉ thay database của **`src/Api`**. Client vẫn dùng SQLite và **không được đổi** — đó không phải lựa chọn mà là ràng buộc kỹ thuật: offline-first cần một database *nhúng trong app*, chạy ngay trên điện thoại khi mất mạng. PostgreSQL là một tiến trình server riêng, không nhúng vào app di động được. Kiến trúc đúng là: **SQLite trên máy người dùng ↔ sync ↔ PostgreSQL trên server**. Toàn bộ Buổi 03–11 giữ nguyên, không sửa một dòng nào.
+> **Ranh giới cần nắm rõ trước khi làm:** PostgreSQL chỉ thay database của **`src/Api/SoChi.Api`**. Client vẫn dùng SQLite và **không được đổi** — đó không phải lựa chọn mà là ràng buộc kỹ thuật: offline-first cần một database *nhúng trong app*, chạy ngay trên điện thoại khi mất mạng. PostgreSQL là một tiến trình server riêng, không nhúng vào app di động được. Kiến trúc đúng là: **SQLite trên máy người dùng ↔ sync ↔ PostgreSQL trên server**. Toàn bộ Buổi 03–11 giữ nguyên, không sửa một dòng nào.
 
 #### 3.2.1 — Cài PostgreSQL trên Windows
 
@@ -2739,11 +2791,11 @@ psql -U postgres -c "CREATE DATABASE sochi_test;"
 psql -U postgres -l          # liệt kê kiểm tra
 ```
 
-#### 3.2.3 — Cài package cho `src/Api`
+#### 3.2.3 — Cài package cho `src/Api/SoChi.Api`
 
 ```powershell
-dotnet add src/Api/SoChi.Api.csproj package Npgsql.EntityFrameworkCore.PostgreSQL
-dotnet add src/Api/SoChi.Api.csproj package Microsoft.AspNetCore.Authentication.JwtBearer
+dotnet add src/Api/SoChi.Api/SoChi.Api.csproj package Npgsql.EntityFrameworkCore.PostgreSQL
+dotnet add src/Api/SoChi.Api/SoChi.Api.csproj package Microsoft.AspNetCore.Authentication.JwtBearer
 ```
 
 `Npgsql.EntityFrameworkCore.PostgreSQL` là provider EF Core cho PostgreSQL. Điểm đáng chú ý về mặt học tập: **đây là toàn bộ thay đổi ở tầng dữ liệu**. Entity, LINQ, `AppDbContext`, mọi endpoint ở Bước 3.7 và 3.9 không đổi một ký tự nào — đó chính là giá trị của việc viết code đúng tầng trừu tượng.
@@ -2757,7 +2809,7 @@ Kiểu dữ liệu cũng được ánh xạ đúng bản chất hơn hẳn SQLit
 | `DateTime` (UTC) | `timestamptz` — **bắt lỗi nếu sai `Kind`** | TEXT — mất `DateTimeKind`, âm thầm sai |
 | `bool` | `boolean` | INTEGER 0/1 |
 
-Tạo `AppDbContext.cs` trong `src/Api/Data/`:
+Tạo `AppDbContext.cs` trong `src/Api/SoChi.Api/Data/`:
 ```csharp
 using Microsoft.EntityFrameworkCore;
 using SoChi.Api.Entities;
@@ -2830,7 +2882,7 @@ app.Run();
 
 ### Bước 3.4: Định nghĩa Entities phía Server
 
-`AppDbContext` ở Bước 3.2 tham chiếu ba entity chưa tồn tại. Tạo `src/Api/Entities/Entities.cs`:
+`AppDbContext` ở Bước 3.2 tham chiếu ba entity chưa tồn tại. Tạo `src/Api/SoChi.Api/Entities/Entities.cs`:
 
 ```csharp
 namespace SoChi.Api.Entities;
@@ -2896,7 +2948,7 @@ Index `(UserId, UpdatedAt)` chính là index mà endpoint `/api/sync/pull` sẽ 
 
 Lưu mật khẩu dạng chữ thường trong database là lỗi bảo mật nghiêm trọng nhất mà người mới hay mắc: database rò rỉ một lần là mất toàn bộ mật khẩu của người dùng — và vì nhiều người dùng lại mật khẩu đó cho email và ngân hàng, thiệt hại lan ra ngoài phạm vi app của bạn.
 
-Tạo `src/Api/Security/PasswordHasher.cs` (dùng PBKDF2 có sẵn trong BCL, **không cần cài thư viện ngoài**):
+Tạo `src/Api/SoChi.Api/Security/PasswordHasher.cs` (dùng PBKDF2 có sẵn trong BCL, **không cần cài thư viện ngoài**):
 
 ```csharp
 using System.Security.Cryptography;
@@ -2952,7 +3004,7 @@ Giá trị dự phòng đó nằm trong mã nguồn, và mã nguồn thì nằm 
 ```csharp
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException(
-        "Thiếu cấu hình Jwt:Key. Chạy: dotnet user-secrets set \"Jwt:Key\" \"<khóa>\" --project src/Api");
+        "Thiếu cấu hình Jwt:Key. Chạy: dotnet user-secrets set \"Jwt:Key\" \"<khóa>\" --project src/Api/SoChi.Api");
 ```
 
 App **fail nhanh lúc khởi động** thay vì chạy với khóa yếu — nguyên tắc "fail fast".
@@ -2960,9 +3012,9 @@ App **fail nhanh lúc khởi động** thay vì chạy với khóa yếu — ngu
 Nạp khóa thật bằng User Secrets (file nằm ngoài thư mục project, không bao giờ lọt vào Git):
 
 ```powershell
-dotnet user-secrets init --project src/Api
-dotnet user-secrets set "Jwt:Key" "$([Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 })))" --project src/Api
-dotnet user-secrets list --project src/Api
+dotnet user-secrets init --project src/Api/SoChi.Api
+dotnet user-secrets set "Jwt:Key" "$([Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 })))" --project src/Api/SoChi.Api
+dotnet user-secrets list --project src/Api/SoChi.Api
 ```
 
 **Chuỗi kết nối PostgreSQL cũng phải nằm ở đây**, vì nó chứa mật khẩu database:
@@ -2970,7 +3022,7 @@ dotnet user-secrets list --project src/Api
 ```powershell
 dotnet user-secrets set "ConnectionStrings:DefaultConnection" `
   "Host=localhost;Port=5432;Database=sochi;Username=postgres;Password=dev" `
-  --project src/Api
+  --project src/Api/SoChi.Api
 ```
 
 Đây là khác biệt thực tế so với SQLite: chuỗi `Data Source=server_sochi.db` vô hại nên đặt thẳng trong `appsettings.json` cũng được. Chuỗi kết nối PostgreSQL thì **luôn có thông tin đăng nhập** — commit nó vào Git là để lộ quyền truy cập database. Quy tắc chung: bất cứ chuỗi nào chứa `Password=` đều không được nằm trong file theo dõi bởi Git.
@@ -2981,7 +3033,7 @@ Khóa HMAC-SHA256 phải dài tối thiểu 32 byte, nếu không `AddJwtBearer`
 
 ### Bước 3.7: Hoàn thiện endpoint Register và Login
 
-Bước 3.3 mới để lại phần thân rỗng. Viết đầy đủ — tạo `src/Api/Endpoints/AuthEndpoints.cs`:
+Bước 3.3 mới để lại phần thân rỗng. Viết đầy đủ — tạo `src/Api/SoChi.Api/Endpoints/AuthEndpoints.cs`:
 
 ```csharp
 using System.IdentityModel.Tokens.Jwt;
@@ -3060,7 +3112,7 @@ public static class AuthEndpoints
 }
 ```
 
-Thêm một hàm mở rộng nhỏ để mọi endpoint lấy `UserId` từ token — tạo `src/Api/Security/ClaimsExtensions.cs`:
+Thêm một hàm mở rộng nhỏ để mọi endpoint lấy `UserId` từ token — tạo `src/Api/SoChi.Api/Security/ClaimsExtensions.cs`:
 
 ```csharp
 using System.Security.Claims;
@@ -3111,13 +3163,13 @@ using (var scope = app.Services.CreateScope())
 
 ```powershell
 dotnet tool install --global dotnet-ef
-dotnet add src/Api/SoChi.Api.csproj package Microsoft.EntityFrameworkCore.Design
+dotnet add src/Api/SoChi.Api/SoChi.Api.csproj package Microsoft.EntityFrameworkCore.Design
 
-dotnet ef migrations add InitialCreate --project src/Api
-dotnet ef database update --project src/Api    # áp vào database `sochi`
+dotnet ef migrations add InitialCreate --project src/Api/SoChi.Api
+dotnet ef database update --project src/Api/SoChi.Api    # áp vào database `sochi`
 ```
 
-Mỗi lần đổi entity: `dotnet ef migrations add <TenThayDoi> --project src/Api` rồi `database update`. Thư mục `Migrations/` được commit vào Git — nó là **lịch sử tiến hóa của schema**, và là thứ cho phép nâng cấp database production mà không mất dữ liệu.
+Mỗi lần đổi entity: `dotnet ef migrations add <TenThayDoi> --project src/Api/SoChi.Api` rồi `database update`. Thư mục `Migrations/` được commit vào Git — nó là **lịch sử tiến hóa của schema**, và là thứ cho phép nâng cấp database production mà không mất dữ liệu.
 
 Nếu dùng Migrations thì thay `EnsureCreated()` bằng:
 
@@ -3131,7 +3183,7 @@ db.Database.Migrate();
 
 Đây là phần Buổi 14 sẽ gọi tới. Không có nó, Sync Engine phía client sẽ nhận `404`.
 
-Tạo `src/Api/Endpoints/SyncEndpoints.cs`:
+Tạo `src/Api/SoChi.Api/Endpoints/SyncEndpoints.cs`:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -3275,14 +3327,14 @@ public partial class Program { }
 Buổi 11 đã test logic phía Client. Nhưng phần dễ sai nhất của toàn dự án — last-write-wins và lọc theo `UserId` — lại nằm ở server, và **không thể kiểm tra bằng tay một cách đáng tin cậy**. Kịch bản xung đột hai thiết bị ở Buổi 15 rất khó tái hiện thủ công; viết test thì chạy lại trong một giây.
 
 ```powershell
-dotnet new xunit -n SoChi.Api.Tests -o tests/Api.Tests
-dotnet sln add tests/Api.Tests/SoChi.Api.Tests.csproj
-dotnet add tests/Api.Tests/SoChi.Api.Tests.csproj reference src/Api/SoChi.Api.csproj
-dotnet add tests/Api.Tests/SoChi.Api.Tests.csproj package Microsoft.AspNetCore.Mvc.Testing
-dotnet add tests/Api.Tests/SoChi.Api.Tests.csproj package Npgsql
+dotnet new xunit -n SoChi.Api.Tests -o tests/SoChi.Api.Tests
+dotnet sln add tests/SoChi.Api.Tests/SoChi.Api.Tests.csproj
+dotnet add tests/SoChi.Api.Tests/SoChi.Api.Tests.csproj reference src/Api/SoChi.Api/SoChi.Api.csproj
+dotnet add tests/SoChi.Api.Tests/SoChi.Api.Tests.csproj package Microsoft.AspNetCore.Mvc.Testing
+dotnet add tests/SoChi.Api.Tests/SoChi.Api.Tests.csproj package Npgsql
 ```
 
-Tạo `tests/Api.Tests/ApiFactory.cs`. Mỗi lần chạy test, factory **tự tạo một database PostgreSQL mới toanh** với tên ngẫu nhiên, chạy migration lên nó, và xóa sạch khi xong:
+Tạo `tests/SoChi.Api.Tests/ApiFactory.cs`. Mỗi lần chạy test, factory **tự tạo một database PostgreSQL mới toanh** với tên ngẫu nhiên, chạy migration lên nó, và xóa sạch khi xong:
 
 ```csharp
 using Microsoft.AspNetCore.Hosting;
@@ -3351,7 +3403,7 @@ Bốn chi tiết đáng học trong đoạn này:
 
 **Điều kiện tiên quyết:** PostgreSQL service phải đang chạy và `dotnet ef migrations add InitialCreate` đã được thực hiện ở Bước 3.8, nếu không `MigrateAsync()` sẽ không có gì để áp.
 
-Tạo `tests/Api.Tests/SyncEndpointTests.cs`:
+Tạo `tests/SoChi.Api.Tests/SyncEndpointTests.cs`:
 
 ```csharp
 using System.Net;
@@ -3446,7 +3498,7 @@ Test cuối cùng là test quan trọng nhất trong cả dự án. Nó là th�
 - **Lỗi:** Gọi API từ Postman trả về lỗi 401 dù đã truyền Header Authorization.
   - **Nguyên nhân:** Quên thêm tiền tố `Bearer ` trước chuỗi Token (`Authorization: Bearer eyJhbGciOi...`).
 - **Lỗi:** Chạy API báo `42P01: relation "Users" does not exist`.
-  - **Nguyên nhân:** Database `sochi` đã tồn tại nhưng chưa có bảng nào. Xem Bước 3.8 — chạy `dotnet ef database update --project src/Api`.
+  - **Nguyên nhân:** Database `sochi` đã tồn tại nhưng chưa có bảng nào. Xem Bước 3.8 — chạy `dotnet ef database update --project src/Api/SoChi.Api`.
 - **Lỗi:** `Cannot write DateTime with Kind=Unspecified to PostgreSQL type 'timestamp with time zone'`.
   - **Nguyên nhân:** Npgsql ánh xạ `DateTime` sang `timestamptz` và **bắt buộc** giá trị ghi vào phải có `Kind = Utc`. Trường `OccurredOn` được gán bằng `DateTime.Today` — giá trị này có `Kind = Unspecified` nên bị chặn ngay.
   - **Khắc phục:** phân biệt đúng bản chất hai loại trường. `OccurredOn` là **một ngày trên lịch**, không phải mốc thời gian tuyệt đối → ánh xạ sang kiểu `date`. Thêm vào `OnModelCreating`:
@@ -3456,7 +3508,7 @@ Test cuối cùng là test quan trọng nhất trong cả dự án. Nó là th�
     Còn `UpdatedAt` là mốc thời gian thật, luôn tạo bằng `DateTime.UtcNow` nên đã đúng sẵn.
   - **Đây là điểm cộng của PostgreSQL, không phải phiền toái.** Cũng lỗi tư duy đó, SQLite im lặng chấp nhận rồi trả về sai lệch 7 tiếng, khiến so sánh last-write-wins sai một cách ngẫu nhiên và cực kỳ khó truy. PostgreSQL chặn ngay tại dòng ghi đầu tiên.
 - **Lỗi:** `28P01: password authentication failed for user "postgres"`.
-  - **Nguyên nhân:** Mật khẩu trong chuỗi kết nối không khớp mật khẩu đặt lúc cài PostgreSQL. Kiểm tra bằng `dotnet user-secrets list --project src/Api`, và thử đăng nhập trực tiếp bằng `psql -U postgres`.
+  - **Nguyên nhân:** Mật khẩu trong chuỗi kết nối không khớp mật khẩu đặt lúc cài PostgreSQL. Kiểm tra bằng `dotnet user-secrets list --project src/Api/SoChi.Api`, và thử đăng nhập trực tiếp bằng `psql -U postgres`.
 - **Lỗi:** `Failed to connect to 127.0.0.1:5432`.
   - **Nguyên nhân:** Service PostgreSQL chưa chạy. `Get-Service postgresql*` để kiểm tra, `Start-Service postgresql-x64-17` để bật.
 - **Lỗi:** Đã chạy `dotnet ef database update` thành công nhưng API vẫn báo `relation "Users" does not exist`.
@@ -3467,15 +3519,15 @@ Test cuối cùng là test quan trọng nhất trong cả dự án. Nó là th�
   - **Nguyên nhân:** Thiếu điều kiện `&& x.UserId == userId` trong một truy vấn nào đó. Lỗi này **không gây exception**, chỉ lộ dữ liệu — đó là lý do bắt buộc phải có test tự động cho nó.
 
 ## 5. Checklist nghiệm thu Buổi 12
-- [ ] Chạy lệnh `dotnet run --project src/Api` -> Server khởi động thành công.
+- [ ] Chạy lệnh `dotnet run --project src/Api/SoChi.Api` -> Server khởi động thành công.
 - [ ] Sử dụng Postman hoặc Swagger gọi `/api/auth/register` -> Tạo được user mới vào server database.
 - [ ] Gọi `/api/auth/login` -> Trả về chuỗi JWT Token hợp lệ.
 - [ ] Dùng Token đó gọi endpoint có `[Authorize]` -> Nhận mã phản hồi `200 OK`.
-- [ ] `dotnet user-secrets list --project src/Api` hiện `Jwt:Key`. Xóa secret đi thì API **không khởi động được** — đúng như thiết kế fail fast.
+- [ ] `dotnet user-secrets list --project src/Api/SoChi.Api` hiện `Jwt:Key`. Xóa secret đi thì API **không khởi động được** — đúng như thiết kế fail fast.
 - [ ] Mở database server, cột `PasswordHash` là chuỗi ba phần dạng `100000.xxxx.yyyy`, tuyệt đối không phải mật khẩu thô.
 - [ ] `POST /api/sync/push` rồi `GET /api/sync/pull` trả về đúng bản ghi vừa đẩy lên.
 - [ ] Đẩy một bản ghi có `UpdatedAt` cũ hơn bản trên server -> server **giữ nguyên** bản mới hơn.
-- [ ] `dotnet test tests/Api.Tests` xanh cả 4 test, đặc biệt là `Pull_KhongThayDuLieuCuaNguoiKhac`.
+- [ ] `dotnet test tests/SoChi.Api.Tests` xanh cả 4 test, đặc biệt là `Pull_KhongThayDuLieuCuaNguoiKhac`.
 - [ ] `Get-Service postgresql*` báo `Running`; `psql -U postgres -l` liệt kê đủ `sochi` và `sochi_test`.
 - [ ] `dotnet ef database update` chạy xong, mở pgAdmin thấy đủ 3 bảng `Users`, `Categories`, `Transactions` cùng bảng `__EFMigrationsHistory`.
 - [ ] Chuỗi kết nối nằm trong user-secrets, **không** có dòng nào chứa `Password=` trong `appsettings.json`.
@@ -3501,7 +3553,7 @@ Test cuối cùng là test quan trọng nhất trong cả dự án. Nó là th�
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Cấu hình địa chỉ Server động theo Platform
-Tạo file `src/Client/Services/ApiConfig.cs`:
+Tạo file `src/Client/SoChi.Client/Services/ApiConfig.cs`:
 ```csharp
 namespace SoChi.Client.Services;
 
@@ -3518,7 +3570,7 @@ public static class ApiConfig
 ```
 
 ### Bước 3.2: Viết DelegatingHandler tự động gắn Token
-Tạo file `src/Client/Services/AuthHeaderHandler.cs`:
+Tạo file `src/Client/SoChi.Client/Services/AuthHeaderHandler.cs`:
 ```csharp
 using System.Net.Http.Headers;
 
@@ -3552,7 +3604,7 @@ builder.Services.AddHttpClient("SoChiApi", client =>
 ```
 
 ### Bước 3.4: Xây dựng Service Đăng nhập / Đăng ký
-Tạo `src/Client/Services/IAuthService.cs`:
+Tạo `src/Client/SoChi.Client/Services/IAuthService.cs`:
 ```csharp
 using System.Net.Http.Json;
 using SoChi.Shared;
@@ -3624,7 +3676,7 @@ public class AuthService
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 3.1: Xây dựng Sync Engine tại Client
-Tạo file `src/Client/Services/ISyncService.cs`:
+Tạo file `src/Client/SoChi.Client/Services/ISyncService.cs`:
 ```csharp
 using System.Net.Http.Json;
 using SoChi.Client.Models;
@@ -3797,7 +3849,7 @@ Sync là thao tác mạng dài nhất trong app, lại thường chạy đúng l
 Cài gói khả năng chịu lỗi (đây là Polly được đóng gói sẵn cho `HttpClient`, cách dùng chuẩn từ .NET 8 trở lên):
 
 ```powershell
-dotnet add src/Client/SoChi.Client.csproj package Microsoft.Extensions.Http.Resilience
+dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package Microsoft.Extensions.Http.Resilience
 ```
 
 Trong `MauiProgram.cs`, gắn vào đúng `HttpClient` đã đăng ký ở Buổi 13:
@@ -3913,7 +3965,7 @@ Thực hiện chính xác 4 bước nghiệm thu:
 4. Bật mạng cả 2 thiết bị -> Thiết bị 2 sửa sau nên giá trị `90.000đ` thắng và đồng bộ cho cả hai máy, không nhân đôi bản ghi.
 
 ### Bước 3.2: Thay thế Icon và Splash Screen
-Thay thế các file trong `src/Client/Resources/`:
+Thay thế các file trong `src/Client/SoChi.Client/Resources/`:
 - `Resources/AppIcon/appicon.svg` (Biểu tượng cuốn sổ màu tím hoặc xanh)
 - `Resources/Splash/splash.svg` (Màn hình khởi động)
 
@@ -3931,7 +3983,7 @@ keytool -genkey -v -keystore sochi.keystore -alias sochi_key -keyalg RSA -keysiz
 
 Chạy lệnh Publish xuất file APK Release:
 ```powershell
-dotnet publish src/Client/SoChi.Client.csproj `
+dotnet publish src/Client/SoChi.Client/SoChi.Client.csproj `
   -f net10.0-android `
   -c Release `
   -p:AndroidKeyStore=true `
@@ -3940,11 +3992,11 @@ dotnet publish src/Client/SoChi.Client.csproj `
   -p:AndroidSigningKeyPass=MatKhauCuaBan `
   -p:AndroidSigningStorePass=MatKhauCuaBan
 ```
-File APK thành phẩm nằm tại: `src/Client/bin/Release/net10.0-android/publish/`.
+File APK thành phẩm nằm tại: `src/Client/SoChi.Client/bin/Release/net10.0-android/publish/`.
 
 ### Bước 3.4: Xuất gói Windows MSIX
 ```powershell
-dotnet publish src/Client/SoChi.Client.csproj `
+dotnet publish src/Client/SoChi.Client/SoChi.Client.csproj `
   -f net10.0-windows10.0.19041.0 `
   -c Release `
   -p:GenerateAppxPackageOnBuild=true
@@ -3969,10 +4021,10 @@ dotnet publish src/Client/SoChi.Client.csproj `
 > **Buổi bổ sung.** Yêu cầu đã xong Buổi 12 (API + PostgreSQL). Đặt ở đây vì đến lúc này server đã có dữ liệu thật do client đồng bộ lên. Nếu muốn có công cụ debug sớm hơn để hỗ trợ Buổi 14, bạn hoàn toàn có thể làm buổi này ngay sau Buổi 12 — chỉ cần bơm vài bản ghi bằng Postman hoặc bằng chính bộ test ở Bước 3.10.
 
 ## 1. Mục tiêu buổi học (Definition of Done)
-- Dựng project `src/Web` bằng Blazor WebAssembly, **được phục vụ trực tiếp từ `src/Api`** (cùng origin, không cần cấu hình CORS).
+- Dựng project `src/Web/SoChi.Web` bằng Blazor WebAssembly, **được phục vụ trực tiếp từ `src/Api/SoChi.Api`** (cùng origin, không cần cấu hình CORS).
 - Đăng nhập bằng chính endpoint `/api/auth/login` đã viết ở Buổi 12, token lưu ở `localStorage`.
 - Có trang **Kiểm tra dữ liệu**: xem toàn bộ bản ghi thô trên server, gồm cả bản đã xóa mềm, kèm `UpdatedAt` và `UserId`.
-- `src/Shared` được **ba** project cùng tham chiếu: Client (MAUI), Api, Web.
+- `src/Shared/SoChi.Shared` được **ba** project cùng tham chiếu: Client (MAUI), Api, Web.
 
 ## 2. Bản chất kiến trúc & Nguyên lý
 
@@ -3989,7 +4041,7 @@ Phân biệt với Blazor Server (dễ nhầm):
 
 Chọn WebAssembly ở đây vì nó cùng triết lý với SoChi: **client tự chủ, server chỉ là nơi chứa dữ liệu**.
 
-**Vì sao host từ `src/Api` chứ không chạy riêng.** Blazor WASM standalone chạy ở origin khác (ví dụ `localhost:5000`) trong khi API ở `localhost:7001` → mọi request bị chặn bởi CORS, phải cấu hình thêm, và cookie/token qua origin khác kéo theo một loạt vấn đề bảo mật. Cho `src/Api` phục vụ luôn file tĩnh của Web thì cả hai **cùng một origin**: không CORS, không cấu hình gì thêm, và deploy chỉ một thứ. Đây cũng là cách các dự án thực tế hay làm nhất.
+**Vì sao host từ `src/Api/SoChi.Api` chứ không chạy riêng.** Blazor WASM standalone chạy ở origin khác (ví dụ `localhost:5000`) trong khi API ở `localhost:7001` → mọi request bị chặn bởi CORS, phải cấu hình thêm, và cookie/token qua origin khác kéo theo một loạt vấn đề bảo mật. Cho `src/Api/SoChi.Api` phục vụ luôn file tĩnh của Web thì cả hai **cùng một origin**: không CORS, không cấu hình gì thêm, và deploy chỉ một thứ. Đây cũng là cách các dự án thực tế hay làm nhất.
 
 **Điểm học lớn nhất của buổi này:** bạn sẽ nhận ra `AuthTokenHandler` viết cho Blazor **gần như giống hệt** cái đã viết cho MAUI ở Buổi 13. Cùng một `DelegatingHandler`, cùng một cách gắn `Bearer`. Khác biệt duy nhất là chỗ cất token: `SecureStorage` trên di động, `localStorage` trên web. Đó là bằng chứng cụ thể rằng bạn đang học **kiến trúc**, không phải học thuộc API của một framework.
 
@@ -3998,15 +4050,15 @@ Chọn WebAssembly ở đây vì nó cùng triết lý với SoChi: **client t�
 ### Bước 16.1: Tạo project và nối dây
 
 ```powershell
-dotnet new blazorwasm -n SoChi.Web -o src/Web
-dotnet sln SoChi.slnx add src/Web/SoChi.Web.csproj
+dotnet new blazorwasm -n SoChi.Web -o src/Web/SoChi.Web
+dotnet sln SoChi.slnx add src/Web/SoChi.Web/SoChi.Web.csproj
 
 # Web dùng chung DTO -> đây là project THỨ BA tham chiếu Shared
-dotnet add src/Web/SoChi.Web.csproj reference src/Shared/SoChi.Shared.csproj
+dotnet add src/Web/SoChi.Web/SoChi.Web.csproj reference src/Shared/SoChi.Shared/SoChi.Shared.csproj
 
 # Api phục vụ file tĩnh của Web
-dotnet add src/Api/SoChi.Api.csproj reference src/Web/SoChi.Web.csproj
-dotnet add src/Api/SoChi.Api.csproj package Microsoft.AspNetCore.Components.WebAssembly.Server
+dotnet add src/Api/SoChi.Api/SoChi.Api.csproj reference src/Web/SoChi.Web/SoChi.Web.csproj
+dotnet add src/Api/SoChi.Api/SoChi.Api.csproj package Microsoft.AspNetCore.Components.WebAssembly.Server
 ```
 
 Sơ đồ tham chiếu sau bước này:
@@ -4019,7 +4071,7 @@ Api           ──┘
       └──▶ Web   (chỉ để lấy file tĩnh đã build, không gọi code)
 ```
 
-Sửa `src/Api/Program.cs` — thứ tự các dòng này **có ý nghĩa**:
+Sửa `src/Api/SoChi.Api/Program.cs` — thứ tự các dòng này **có ý nghĩa**:
 
 ```csharp
 var app = builder.Build();
@@ -4042,13 +4094,13 @@ app.Run();
 
 Chạy thử:
 ```powershell
-dotnet run --project src/Api
+dotnet run --project src/Api/SoChi.Api
 ```
 Mở `https://localhost:7xxx` — trang Blazor mặc định hiện lên, phục vụ bởi chính API. Không cần chạy hai tiến trình.
 
 ### Bước 16.2: Lưu token và gắn vào request
 
-Tạo `src/Web/Services/TokenStore.cs`:
+Tạo `src/Web/SoChi.Web/Services/TokenStore.cs`:
 
 ```csharp
 using Microsoft.JSInterop;
@@ -4070,7 +4122,7 @@ public class TokenStore(IJSRuntime js)
 }
 ```
 
-Tạo `src/Web/Services/AuthTokenHandler.cs` — **so nó với `AuthTokenHandler` của MAUI ở Buổi 13, gần như từng dòng một**:
+Tạo `src/Web/SoChi.Web/Services/AuthTokenHandler.cs` — **so nó với `AuthTokenHandler` của MAUI ở Buổi 13, gần như từng dòng một**:
 
 ```csharp
 using System.Net.Http.Headers;
@@ -4092,7 +4144,7 @@ public class AuthTokenHandler(TokenStore store) : DelegatingHandler
 }
 ```
 
-Đăng ký trong `src/Web/Program.cs`:
+Đăng ký trong `src/Web/SoChi.Web/Program.cs`:
 
 ```csharp
 builder.Services.AddScoped<TokenStore>();
@@ -4112,7 +4164,7 @@ builder.Services.AddScoped(sp =>
 
 ### Bước 16.3: Trang đăng nhập
 
-Tạo `src/Web/Pages/Login.razor`:
+Tạo `src/Web/SoChi.Web/Pages/Login.razor`:
 
 ```razor
 @page "/dang-nhap"
@@ -4184,11 +4236,11 @@ Tạo `src/Web/Pages/Login.razor`:
 }
 ```
 
-Để ý: `ApiRoutes.Login`, `LoginRequest`, `AuthResponse` đều đến từ `src/Shared` — **cùng đúng những kiểu mà MAUI đang dùng**. Đổi tên một trường trong `AuthResponse` bây giờ sẽ làm hỏng build của cả ba project cùng lúc, ngay lập tức. Đó chính xác là điều bạn muốn, và là lý do `Shared` tồn tại.
+Để ý: `ApiRoutes.Login`, `LoginRequest`, `AuthResponse` đều đến từ `src/Shared/SoChi.Shared` — **cùng đúng những kiểu mà MAUI đang dùng**. Đổi tên một trường trong `AuthResponse` bây giờ sẽ làm hỏng build của cả ba project cùng lúc, ngay lập tức. Đó chính xác là điều bạn muốn, và là lý do `Shared` tồn tại.
 
 ### Bước 16.4: Endpoint xem dữ liệu thô
 
-Thêm vào `src/Api/Endpoints/SyncEndpoints.cs` (hoặc tạo `ReportEndpoints.cs`):
+Thêm vào `src/Api/SoChi.Api/Endpoints/SyncEndpoints.cs` (hoặc tạo `ReportEndpoints.cs`):
 
 ```csharp
 group.MapGet("/raw", async (ClaimsPrincipal principal, AppDbContext db, bool includeDeleted = false) =>
@@ -4215,7 +4267,7 @@ group.MapGet("/raw", async (ClaimsPrincipal principal, AppDbContext db, bool inc
 
 ### Bước 16.5: Trang Kiểm tra dữ liệu
 
-Tạo `src/Web/Pages/DataInspector.razor`:
+Tạo `src/Web/SoChi.Web/Pages/DataInspector.razor`:
 
 ```razor
 @page "/kiem-tra"
@@ -4310,16 +4362,16 @@ Hiển thị `UpdatedAt` ở định dạng `"O"` (ISO 8601 đầy đủ, có `Z
 - **Lỗi:** Gọi API trả về HTML, JSON parse báo `'<' is an invalid start of a value`.
   - **Nguyên nhân:** `MapFallbackToFile("index.html")` đặt **trước** các endpoint API nên nó nuốt hết. Xem lại thứ tự ở Bước 16.1.
 - **Lỗi:** `Access to fetch ... has been blocked by CORS policy`.
-  - **Nguyên nhân:** Bạn đang chạy `src/Web` riêng (`dotnet run --project src/Web`) thay vì mở qua địa chỉ của API. Buổi này luôn chạy `dotnet run --project src/Api` rồi mở đúng cổng của nó.
+  - **Nguyên nhân:** Bạn đang chạy `src/Web/SoChi.Web` riêng (`dotnet run --project src/Web/SoChi.Web`) thay vì mở qua địa chỉ của API. Buổi này luôn chạy `dotnet run --project src/Api/SoChi.Api` rồi mở đúng cổng của nó.
 - **Lỗi:** `IJSRuntime` ném `JavaScript interop calls cannot be issued at this time` khi đọc token.
   - **Nguyên nhân:** Gọi JS trong lúc prerender hoặc trong constructor. Chỉ gọi `localStorage` từ `OnAfterRenderAsync` hoặc từ event handler của người dùng.
 - **Lỗi:** Đăng nhập xong F5 lại thì mất phiên.
   - **Nguyên nhân:** Token lưu ở `sessionStorage` thay vì `localStorage`, hoặc quên `await` khi ghi.
-- **Cảnh báo bảo mật — đọc kỹ:** Blazor WASM chạy hoàn toàn trong trình duyệt, nên **mọi thứ trong `src/Web` đều công khai**: người dùng tải được toàn bộ DLL và đọc được mã nguồn của bạn. Tuyệt đối không đặt chuỗi kết nối database, khóa JWT, hay bất kỳ bí mật nào ở đây. Kiểm tra quyền **luôn phải nằm ở server** — `[Authorize]` và điều kiện `UserId` trong endpoint mới là thứ bảo vệ dữ liệu; ẩn/hiện nút bấm ở giao diện chỉ là tiện lợi cho người dùng, không phải bảo mật.
+- **Cảnh báo bảo mật — đọc kỹ:** Blazor WASM chạy hoàn toàn trong trình duyệt, nên **mọi thứ trong `src/Web/SoChi.Web` đều công khai**: người dùng tải được toàn bộ DLL và đọc được mã nguồn của bạn. Tuyệt đối không đặt chuỗi kết nối database, khóa JWT, hay bất kỳ bí mật nào ở đây. Kiểm tra quyền **luôn phải nằm ở server** — `[Authorize]` và điều kiện `UserId` trong endpoint mới là thứ bảo vệ dữ liệu; ẩn/hiện nút bấm ở giao diện chỉ là tiện lợi cho người dùng, không phải bảo mật.
 - **Về `localStorage`:** token nằm ở đó có thể bị đánh cắp nếu trang dính lỗ hổng XSS. Với dự án học tập thì chấp nhận được, nhưng cần biết đó là đánh đổi có ý thức. Giải pháp của ứng dụng thật là cookie `HttpOnly` + `SameSite`, và token sống ngắn kèm refresh token — chứ không phải token 30 ngày như Buổi 12 đang cấp.
 
 ## 5. Checklist nghiệm thu Buổi 16
-- [ ] `dotnet run --project src/Api` rồi mở `https://localhost:7xxx` → thấy giao diện Blazor, **không** cần chạy tiến trình thứ hai.
+- [ ] `dotnet run --project src/Api/SoChi.Api` rồi mở `https://localhost:7xxx` → thấy giao diện Blazor, **không** cần chạy tiến trình thứ hai.
 - [ ] Đăng nhập bằng đúng tài khoản đã tạo ở Buổi 12 → chuyển sang trang Kiểm tra.
 - [ ] Mở F12 → tab Network, thấy request `/api/sync/raw` mang header `Authorization: Bearer ...`.
 - [ ] Xóa token trong `localStorage` rồi F5 → trang hiện cảnh báo chưa đăng nhập, **không** trắng màn hình.
@@ -4357,9 +4409,9 @@ Dòng cuối là điểm ăn tiền của SVG: mỗi cung là **một phần t�
 
 ## 3. Các bước thực hành chi tiết
 
-### Bước 17.1: DTO báo cáo trong `src/Shared`
+### Bước 17.1: DTO báo cáo trong `src/Shared/SoChi.Shared`
 
-Tạo `src/Shared/Dtos/ReportDtos.cs`:
+Tạo `src/Shared/SoChi.Shared/Dtos/ReportDtos.cs`:
 
 ```csharp
 namespace SoChi.Shared.Dtos;
@@ -4381,7 +4433,7 @@ public record DataHealthReport(
 
 ### Bước 17.2: Endpoint báo cáo
 
-Tạo `src/Api/Endpoints/ReportEndpoints.cs`:
+Tạo `src/Api/SoChi.Api/Endpoints/ReportEndpoints.cs`:
 
 ```csharp
 using Microsoft.EntityFrameworkCore;
@@ -4477,7 +4529,7 @@ app.MapReportEndpoints();
 
 ### Bước 17.3: Donut chart bằng SVG
 
-Tạo `src/Web/Components/DonutChart.razor`:
+Tạo `src/Web/SoChi.Web/Components/DonutChart.razor`:
 
 ```razor
 @using SoChi.Shared.Dtos
@@ -4544,7 +4596,7 @@ Thẻ `<title>` bên trong mỗi `<circle>` cho tooltip gốc của trình duy�
 
 ### Bước 17.4: Bar chart 6 tháng
 
-Tạo `src/Web/Components/BarChart.razor`:
+Tạo `src/Web/SoChi.Web/Components/BarChart.razor`:
 
 ```razor
 @using SoChi.Shared.Dtos
@@ -4597,7 +4649,7 @@ Phép tính `h = value * 150 / max` chính là **tỉ lệ trục tung** — đ�
 
 ### Bước 17.5: Trang Thống kê
 
-Tạo `src/Web/Pages/Statistics.razor`:
+Tạo `src/Web/SoChi.Web/Pages/Statistics.razor`:
 
 ```razor
 @page "/thong-ke"
@@ -4690,7 +4742,7 @@ Giờ mở lại kịch bản xung đột hai thiết bị ở Buổi 15 và là
 4. Đối chiếu: `UpdatedAt` hiển thị phải là mốc **lớn hơn** trong hai mốc, và số tiền phải là của bản sửa sau. Nếu ngược lại, so sánh last-write-wins ở Bước 3.9 của Buổi 12 đang sai.
 5. Kiểm tra thẻ **Mồ côi** trên trang Thống kê phải bằng 0. Khác 0 nghĩa là sync đang đẩy giao dịch trước danh mục.
 
-Đây là điểm mà cả ba phần của dự án khớp lại: MAUI ghi dữ liệu, PostgreSQL lưu, và Blazor cho bạn **thấy** nó — bằng cùng một bộ DTO trong `src/Shared`.
+Đây là điểm mà cả ba phần của dự án khớp lại: MAUI ghi dữ liệu, PostgreSQL lưu, và Blazor cho bạn **thấy** nó — bằng cùng một bộ DTO trong `src/Shared/SoChi.Shared`.
 
 ## 4. Bẫy thường gặp (Pitfalls)
 - **Lỗi:** `The LINQ expression could not be translated` khi chạy endpoint báo cáo.
@@ -4731,7 +4783,7 @@ Ba triệu chứng, một nguyên nhân: ViewModel không có khái niệm về 
 
 ## Giải pháp: một `BaseViewModel` dùng chung
 
-Tạo `src/Client/ViewModels/BaseViewModel.cs`:
+Tạo `src/Client/SoChi.Client/ViewModels/BaseViewModel.cs`:
 
 ```csharp
 using CommunityToolkit.Mvvm.ComponentModel;

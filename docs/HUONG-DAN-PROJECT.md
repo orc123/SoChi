@@ -57,6 +57,17 @@ Api            ──┘
 
 `Web` là phần mở rộng tùy chọn (Buổi 16–17 trong [HUONG-DAN-TUNG-BUOI.md](HUONG-DAN-TUNG-BUOI.md)). Nó khiến `Shared` có **ba** người dùng thay vì hai — và đó là lúc giá trị của contract dùng chung thể hiện rõ nhất: đổi một trường trong DTO làm hỏng build của cả ba project ngay lập tức, thay vì âm thầm sai lúc chạy.
 
+> **Đối chiếu với repo SoChi thật.** Sơ đồ dưới đây dùng tên rút gọn cho dễ đọc. Repo thật lồng sâu thêm một cấp — mỗi project nằm trong thư mục riêng bên trong thư mục nhóm:
+>
+> | Tài liệu này viết | Repo SoChi thật |
+> |---|---|
+> | `src/Client/Client.csproj` | `src/Client/SoChi.Client/SoChi.Client.csproj` |
+> | `src/Api/Api.csproj` | `src/Api/SoChi.Api/SoChi.Api.csproj` |
+> | `src/Shared/Shared.csproj` | `src/Shared/SoChi.Shared/SoChi.Shared.csproj` |
+> | `tests/` | `tests/` — giống nhau, không lồng thêm cấp |
+>
+> [HUONG-DAN-TUNG-BUOI.md](HUONG-DAN-TUNG-BUOI.md) dùng đường dẫn thật, còn tài liệu này giữ tên rút gọn vì nó giải thích **khái niệm**, không phải để copy lệnh.
+
 ---
 
 ## 3. Bản đồ toàn bộ solution
