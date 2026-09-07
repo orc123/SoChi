@@ -256,11 +256,13 @@ App mặc định (`MainPage.xaml` với nút Click me) hiện lên là đạt. 
 ## 3. Các bước thực hành chi tiết
 
 ### Bước 1.1: Khởi tạo cấu trúc Solution và thư mục
-Mở PowerShell tại thư mục gốc của dự án (`d:\Project\MAUI`):
+Mở PowerShell tại thư mục gốc của repo (`d:\Project\MAUI\SoChi`):
+
+> **Nếu bạn đã làm Buổi 00 thì solution và ba project đã có sẵn** — đọc lướt bước này để hiểu từng lệnh làm gì, rồi nhảy sang Bước 1.3.
 
 ```powershell
-# Tạo solution
-dotnet new sln -n SoChi
+# Tạo solution (thêm --format slnx nếu muốn định dạng XML mới như repo SoChi)
+dotnet new sln -n SoChi --format slnx
 
 # Tạo 3 project theo cấu trúc src/
 dotnet new maui        -n SoChi.Client -o src/Client/SoChi.Client
@@ -277,31 +279,36 @@ dotnet add src/Client/SoChi.Client/SoChi.Client.csproj reference src/Shared/SoCh
 dotnet add src/Api/SoChi.Api/SoChi.Api.csproj reference src/Shared/SoChi.Shared/SoChi.Shared.csproj
 ```
 
-### Bước 1.2: Tạo các file cấu hình toàn cục
-Tạo file `global.json` ở thư mục gốc:
-```json
-{
-  "sdk": {
-    "version": "10.0.100",
-    "rollForward": "latestFeature"
-  }
-}
-```
+### Bước 1.2: Các file cấu hình toàn cục
 
-Tạo file `Directory.Build.props` ở thư mục gốc:
-```xml
-<Project>
-  <PropertyGroup>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
-  </PropertyGroup>
-</Project>
-```
+> `global.json`, `Directory.Build.props` và `.gitignore` **đã được tạo ở Buổi 00 Bước 0.5** — đó mới là nguồn chuẩn. Đừng tạo lại đè lên, vì giá trị ở Buổi 00 khác: SDK ghim đúng bản thật trên máy bạn, và `TreatWarningsAsErrors` bật `true` chứ không phải `false`.
 
-Tạo file `.gitignore` chuẩn cho .NET:
+Việc duy nhất còn lại của bước này là thêm `.editorconfig` — file quy định cách format code, được Visual Studio, Rider và `dotnet format` cùng đọc. Tạo ở thư mục gốc repo:
+
 ```powershell
-dotnet new gitignore
+dotnet new editorconfig
+```
+
+Nó sinh ra một file rất dài với toàn bộ quy tắc mặc định của .NET. Vài dòng đáng biết mà bạn có thể tự chỉnh:
+
+```ini
+[*.{cs,xaml}]
+indent_style = space
+indent_size = 4
+end_of_line = crlf
+charset = utf-8-bom
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Ưu tiên khai báo kiểu tường minh thay vì var ở nơi kiểu không hiển nhiên
+csharp_style_var_when_type_is_apparent = true:suggestion
+```
+
+Vì sao đáng làm ngay từ buổi đầu: nó chấm dứt tranh cãi tab/space và giữ diff Git sạch. Không có nó, một lần Visual Studio tự format lại file là commit của bạn phình lên hàng trăm dòng thay đổi vô nghĩa, che mất thay đổi thật.
+
+Kiểm tra toàn bộ code đã đúng format:
+```powershell
+dotnet format SoChi.slnx --verify-no-changes
 ```
 
 ### Bước 1.3: Cài đặt thư viện MVVM cho Client
@@ -341,6 +348,10 @@ git commit -m "feat: setup initial solution structure with Client, Api, and Shar
   dotnet build src/Client/SoChi.Client/SoChi.Client.csproj -f net10.0-windows10.0.19041.0 -t:Run
   ```
 - [ ] Cửa sổ app hiển thị bình thường.
+- [ ] `.editorconfig` tồn tại ở thư mục gốc và `dotnet format SoChi.slnx --verify-no-changes` không báo lỗi.
+- [ ] `SoChi.Shared.csproj` **không** có thẻ `<ProjectReference>` nào (Shared phải độc lập).
+- [ ] `dotnet list src/Client/SoChi.Client/SoChi.Client.csproj package` thấy `CommunityToolkit.Mvvm`.
+- [ ] Sáu thư mục `Models/`, `Views/`, `ViewModels/`, `Services/`, `Converters/`, `Controls/` đã có trong `src/Client/SoChi.Client/`.
 - [ ] Lịch sử `git log` có commit khởi tạo.
 
 ---
