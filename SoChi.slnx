@@ -1,0 +1,21 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="../docs/DU-AN-HOC-TAP.md" />
+    <File Path="../docs/HUONG-DAN-PROJECT.md" />
+    <File Path="../docs/HUONG-DAN-TUNG-BUOI.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
+  </Folder>
+  <Folder Name="/src/" />
+  <Folder Name="/src/Api/">
+    <Project Path="src/Api/SoChi.Api/SoChi.Api.csproj" Id="2213ef24-f650-460f-a3a1-f14aeef8f21d" />
+  </Folder>
+  <Folder Name="/src/Client/">
+    <Project Path="src/Client/SoChi.Client/SoChi.Client.csproj" Id="26469d38-ee42-4422-9f13-8cbea88b37a5">
+      <Deploy Solution="Debug|*" />
+    </Project>
+  </Folder>
+  <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/SoChi.Shared/SoChi.Shared.csproj" Id="198ca71e-9878-44ae-a5c1-645a3b9a830d" />
+  </Folder>
+</Solution>
