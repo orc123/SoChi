@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:SoChi.Client.ViewModels"
+             x:Class="SoChi.Client.Views.OverviewPage"
+             x:DataType="vm:OverviewViewModel"
+             Title="{Binding Title}">
+    <VerticalStackLayout Padding="20" VerticalOptions="Center">
+        <Label Text="Màn hình tổng quan"
+               HorizontalOptions="Center"
+               FontSize="10" />
+        <Button Text="+ Thêm Giao Dịch"
+                Command="{Binding OpenTransactionFormCommand}" />
+    </VerticalStackLayout>
+</ContentPage>

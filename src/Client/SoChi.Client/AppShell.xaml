@@ -4,11 +4,19 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:SoChi.Client"
+    xmlns:views="clr-namespace:SoChi.Client.Views"
     Title="SoChi">
 
-    <ShellContent
-        Title="Sổ Chi"
-        ContentTemplate="{DataTemplate local:MainPage}"
-        Route="MainPage" />
-
+    <TabBar>
+        <ShellContent Title="Tổng quan"
+                      ContentTemplate="{DataTemplate views:OverviewPage}" />
+        <ShellContent Title="Giao dịch"
+                      ContentTemplate="{DataTemplate views:TransactionsPage}" />
+        <ShellContent Title="Thống kê"
+                      ContentTemplate="{DataTemplate views:StatisticsPage}" />
+        <ShellContent Title="Danh mục"
+                      ContentTemplate="{DataTemplate views:CategoriesPage}" />
+        <ShellContent Title="Cài đặt"
+                      ContentTemplate="{DataTemplate views:SettingsPage}" />
+    </TabBar>
 </Shell>

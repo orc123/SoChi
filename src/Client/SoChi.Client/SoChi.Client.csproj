@@ -80,8 +80,45 @@
 	  <Folder Include="Converters\" />
 	  <Folder Include="Controls\" />
 	  <Folder Include="Services\" />
-	  <Folder Include="ViewModels\" />
-	  <Folder Include="Views\" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Update="Views\TransactionFormPage.xaml.cs">
+	    <DependentUpon>TransactionFormPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Views\TransactionsPage.xaml.cs">
+	    <DependentUpon>TransactionsPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Views\StatisticsPage.xaml.cs">
+	    <DependentUpon>StatisticsPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Views\SettingsPage.xaml.cs">
+	    <DependentUpon>SettingsPage.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Views\CategoriesPage.xaml.cs">
+	    <DependentUpon>CategoriesPage.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiXaml Update="Views\TransactionFormPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\TransactionsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\StatisticsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\SettingsPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\CategoriesPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="Views\OverviewPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	</ItemGroup>
 
 </Project>

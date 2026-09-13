@@ -384,7 +384,7 @@ namespace SoChi.Client.ViewModels;
 public partial class OverviewViewModel : ObservableObject
 {
     [ObservableProperty]
-    private string title = "Tổng Quan";
+    public partial string Title { get; set; } = "Tổng Quan";
 }
 ```
 Tạo tương tự cho:
@@ -393,6 +393,39 @@ Tạo tương tự cho:
 - `CategoriesViewModel.cs` (Tab Danh mục)
 - `SettingsViewModel.cs` (Tab Cài đặt)
 - `TransactionFormViewModel.cs` (Modal Thêm/Sửa)
+
+> ### ⚠️ Phải dùng `partial property`, không dùng field
+>
+> Đây là thay đổi mà hầu hết tutorial trên mạng chưa cập nhật, và nó sẽ làm bạn mất thời gian nếu không biết trước.
+>
+> Từ CommunityToolkit.Mvvm 8.4, đặt `[ObservableProperty]` lên một **field** sẽ sinh ra:
+>
+> ```
+> error MVVMTK0045: The field ..._title using [ObservableProperty] will generate code
+> that is not AOT compatible in WinRT scenarios (such as UWP XAML and WinUI 3 apps),
+> and a partial property should be used instead
+> ```
+>
+> Hai điều khiến lỗi này khó chẩn đoán:
+>
+> 1. **Chỉ nổ ở target Windows.** WinUI 3 chạy trên WinRT, còn Android/iOS/MacCatalyst thì không. Nên `dotnet build SoChi.slnx` có thể xanh, mà build riêng Windows lại đỏ — dễ tưởng hỏng máy hay hỏng cache.
+> 2. **Bản chất nó là *warning*, nhưng thành *error*** vì `TreatWarningsAsErrors=true` đã bật từ Buổi 00.
+>
+> Cách viết đúng — đổi `private` thành `public partial`, tên sang PascalCase, thêm `{ get; set; }`. Giá trị mặc định giữ nguyên tại chỗ:
+>
+> ```csharp
+> // ❌ Cách cũ (mọi blog trước 2025 đều viết thế này)
+> [ObservableProperty]
+> private string _title = "Tổng Quan";
+>
+> // ✅ Cách đúng với .NET 10 + toolkit 8.4 trở lên
+> [ObservableProperty]
+> public partial string Title { get; set; } = "Tổng Quan";
+> ```
+>
+> Class vẫn phải khai báo `partial` như cũ. **Tên property dùng trong XAML và trong code không đổi** — trước đây toolkit cũng sinh ra đúng tên PascalCase đó từ field (`_title` → `Title`), chỉ khác là giờ bạn viết nó ra tường minh. Vì vậy mọi `{Binding Title}` trong tài liệu này vẫn đúng nguyên.
+>
+> Nếu đang theo một tutorial cũ và muốn giữ cú pháp field, có thể tắt cảnh báo bằng `<NoWarn>$(NoWarn);MVVMTK0045</NoWarn>` trong `SoChi.Client.csproj`. Nhưng đừng làm vậy: partial property là hướng đi chính thức, và bạn sẽ cần nó khi bật AOT ở Buổi 15.
 
 ### Bước 2.2: Tạo các trang Views và gán BindingContext qua DI
 Ví dụ tạo `OverviewPage.xaml` trong `src/Client/SoChi.Client/Views/`:
@@ -840,11 +873,11 @@ public partial class TransactionFormViewModel : ObservableObject
 {
     private readonly ITransactionRepository _repository;
 
-    [ObservableProperty] private long amount;
-    [ObservableProperty] private string note = string.Empty;
-    [ObservableProperty] private DateTime occurredOn = DateTime.Today;
-    [ObservableProperty] private Category? selectedCategory;
-    [ObservableProperty] private TransactionKind selectedKind = TransactionKind.Expense;
+    [ObservableProperty] public partial long Amount { get; set; }
+    [ObservableProperty] public partial string Note { get; set; } = string.Empty;
+    [ObservableProperty] public partial DateTime OccurredOn { get; set; } = DateTime.Today;
+    [ObservableProperty] public partial Category? SelectedCategory { get; set; }
+    [ObservableProperty] public partial TransactionKind SelectedKind { get; set; } = TransactionKind.Expense;
 
     public ObservableCollection<Category> Categories { get; } = new();
 
@@ -1084,7 +1117,7 @@ public partial class CategoriesViewModel : ObservableObject
     public ObservableCollection<Category> IncomeCategories { get; } = new();
 
     [ObservableProperty]
-    private bool isBusy;
+    public partial bool IsBusy { get; set; }
 
     [RelayCommand]
     public async Task LoadAsync()
@@ -1255,12 +1288,12 @@ public partial class CategoryFormViewModel : ObservableObject, IQueryAttributabl
     public string[] ColorChoices { get; } =
         ["#EF4444", "#F59E0B", "#3B82F6", "#EC4899", "#8B5CF6", "#10B981", "#06B6D4", "#64748B"];
 
-    [ObservableProperty] private string name = string.Empty;
-    [ObservableProperty] private string selectedIcon = "🍔";
-    [ObservableProperty] private string selectedColor = "#3B82F6";
-    [ObservableProperty] private bool isIncome;
-    [ObservableProperty] private string monthlyLimitText = string.Empty;
-    [ObservableProperty] private string title = "Thêm danh mục";
+    [ObservableProperty] public partial string Name { get; set; } = string.Empty;
+    [ObservableProperty] public partial string SelectedIcon { get; set; } = "🍔";
+    [ObservableProperty] public partial string SelectedColor { get; set; } = "#3B82F6";
+    [ObservableProperty] public partial bool IsIncome { get; set; }
+    [ObservableProperty] public partial string MonthlyLimitText { get; set; } = string.Empty;
+    [ObservableProperty] public partial string Title { get; set; } = "Thêm danh mục";
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
@@ -1461,7 +1494,7 @@ public class TransactionGroup : ObservableCollection<TransactionItemDisplay>
 
 ### Bước 5.2: Cập nhật `TransactionsViewModel` xử lý nhóm
 ```csharp
-[ObservableProperty] private bool isRefreshing;
+[ObservableProperty] public partial bool IsRefreshing { get; set; }
 
 public ObservableCollection<TransactionGroup> GroupedTransactions { get; } = new();
 
@@ -1684,7 +1717,7 @@ public partial class NumericKeypadView : ContentView
 
 ### Bước 3.2: Xử lý logic nhập tiền trong `TransactionFormViewModel`
 ```csharp
-[ObservableProperty] private string rawAmountString = "0";
+[ObservableProperty] public partial string RawAmountString { get; set; } = "0";
 
 public string FormattedDisplayAmount
 {
@@ -1978,8 +2011,8 @@ public class DonutChartView : GraphicsView
 ### Bước 3.4: Đưa Donut Chart lên màn hình Tổng Quan (`OverviewPage`)
 Trong `OverviewViewModel.cs`:
 ```csharp
-[ObservableProperty] private List<ChartSegment> expenseSegments = new();
-[ObservableProperty] private string totalExpenseText = "0 ₫";
+[ObservableProperty] public partial List<ChartSegment> ExpenseSegments { get; set; } = new();
+[ObservableProperty] public partial string TotalExpenseText { get; set; } = "0 ₫";
 
 [RelayCommand]
 public async Task LoadOverviewDataAsync()
@@ -2174,7 +2207,7 @@ public class BarChartView : GraphicsView
 ### Bước 3.4: Tích hợp vào `StatisticsViewModel` và XAML
 Trong `StatisticsViewModel.cs`:
 ```csharp
-[ObservableProperty] private List<MonthlyBarData> last6MonthsData = new();
+[ObservableProperty] public partial List<MonthlyBarData> Last6MonthsData { get; set; } = new();
 
 [RelayCommand]
 public async Task LoadStatisticsAsync()
@@ -2333,7 +2366,7 @@ builder.Services.AddSingleton<IMediaService, MediaService>();
 
 ### Bước 3.3: Tích hợp vào `TransactionFormViewModel`
 ```csharp
-[ObservableProperty] private string? receiptPath;
+[ObservableProperty] public partial string? ReceiptPath { get; set; }
 
 [RelayCommand]
 private async Task AttachReceiptAsync()
@@ -2590,7 +2623,7 @@ Trong `TransactionsViewModel.cs`:
 ```csharp
 private CancellationTokenSource? _searchCts;
 
-[ObservableProperty] private string searchText = string.Empty;
+[ObservableProperty] public partial string SearchText { get; set; } = string.Empty;
 
 async partial void OnSearchTextChanged(string value)
 {
@@ -4805,13 +4838,13 @@ public partial class BaseViewModel : ObservableObject
 {
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsNotBusy))]
-    private bool isBusy;
+    public partial bool IsBusy { get; set; }
 
     public bool IsNotBusy => !IsBusy;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasError))]
-    private string? errorMessage;
+    public partial string? ErrorMessage { get; set; }
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
