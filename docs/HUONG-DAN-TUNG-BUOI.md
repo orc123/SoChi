@@ -549,11 +549,18 @@ private async Task CancelAsync()
 - **Lỗi:** Bấm nút mở Modal nhưng app đứng im hoặc ném ngoại lệ `Route not found`.
   - **Nguyên nhân:** Tên route truyền vào `GoToAsync("transaction_form")` không khớp chính xác với chuỗi đăng ký trong `Routing.RegisterRoute`.
 
+- **Lỗi:** Nút bấm không có phản ứng gì cả — không lỗi, không exception, không log.
+  - **Nguyên nhân phổ biến nhất:** constructor của Page inject **nhầm ViewModel**. Ví dụ `TransactionFormPage` nhận `TransactionsViewModel` (ViewModel của tab danh sách) thay vì `TransactionFormViewModel`. Khi đó `BindingContext` là kiểu khác, `{Binding CloseCommand}` không tìm thấy gì, `Button.Command` thành `null`, và bấm không ăn.
+  - **Vì sao khó tìm:** binding sai **không ném exception**. MAUI coi đó là chuyện bình thường (dữ liệu có thể chưa sẵn sàng) nên chỉ ghi log rồi bỏ qua. Không có gì đỏ để bạn lần theo.
+  - **Dấu hiệu nhận biết sớm:** tiêu đề trang hiển thị sai. Nếu cả hai ViewModel đều có property `Title`, binding vẫn chạy nhưng ra nội dung của ViewModel nhầm — đó chính là manh mối.
+  - **Cách kiểm tra nhanh:** đặt breakpoint ngay trong constructor của Page và xem tham số `viewModel` thực sự là kiểu gì. Nguyên tắc chung: nút "bấm không ăn" thì nghi `BindingContext` **trước**, nghi command hay route sau.
+
 ## 5. Checklist nghiệm thu Buổi 02
 - [ ] Chuyển qua lại giữa 5 tab mượt mà, tiêu đề trên mỗi tab hiển thị đúng.
 - [ ] Tại màn hình Tổng quan, bấm nút mở Form Thêm giao dịch -> Màn hình Modal hiển thị.
 - [ ] Bấm nút "Hủy / Đóng" trên Modal -> Quay về đúng màn hình trước đó.
 - [ ] Kiểm tra toàn bộ code-behind (`.xaml.cs`) không có toán tử `new` với ViewModel.
+- [ ] Mỗi Page inject **đúng** ViewModel tương ứng của nó — đối chiếu tên trong constructor với `x:DataType` khai báo trong file `.xaml` cùng tên.
 
 ---
 
