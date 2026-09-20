@@ -815,10 +815,33 @@ builder.Services.AddSingleton<ITransactionRepository, SqliteTransactionRepositor
   ```
   - **Khắc phục:** Luôn tuân thủ cơ chế `InitializeAsync()` kết hợp SemaphoreSlim như hướng dẫn ở trên.
 
+- **Lỗi:** `UpdatedAt` đọc từ SQLite ra có `Kind = Unspecified` thay vì `Utc`, dù lúc ghi vào là `DateTime.UtcNow`.
+  - **Nguyên nhân:** `sqlite-net-pcl` mặc định lưu `DateTime` dưới dạng **ticks** (`storeDateTimeAsTicks: true`). Lúc đọc ra nó dựng lại bằng `new DateTime(ticks)` — mà constructor này luôn cho `Kind = Unspecified`. Thông tin "đây là giờ UTC" bị mất sạch.
+  - **Vì sao nguy hiểm:** ở Buổi 13–14, DTO gửi lên server sẽ được `System.Text.Json` tuần tự hóa **không có hậu tố `Z`**. Server PostgreSQL nhận vào rồi diễn giải theo kiểu khác, khiến so sánh last-write-wins sai lệch đúng bằng chênh lệch múi giờ (7 tiếng ở Việt Nam). Triệu chứng sẽ là "bản sửa cũ hơn lại thắng" — cực khó truy vì không có lỗi nào được ném ra.
+  - **Khắc phục:** đừng dùng thẳng giá trị đọc từ database. Chuẩn hóa ngay tại tầng Repository, mỗi khi đọc bản ghi lên:
+    ```csharp
+    private static DateTime AsUtc(DateTime value) =>
+        value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    ```
+    Áp dụng cho `UpdatedAt` sau mỗi lần `GetAsync`/`Table<T>()`. Cách gọn hơn là bọc nó vào chính property của model:
+    ```csharp
+    private DateTime _updatedAt = DateTime.UtcNow;
+    public DateTime UpdatedAt
+    {
+        get => DateTime.SpecifyKind(_updatedAt, DateTimeKind.Utc);
+        set => _updatedAt = value;
+    }
+    ```
+  - **Lưu ý:** `OccurredOn` **không** cần xử lý này. Nó là một ngày trên lịch (`DateTime.Today`), không phải mốc thời gian tuyệt đối — đúng như cách nó được ánh xạ sang kiểu `date` ở phía server tại Buổi 12.
+- **Lỗi:** Build đỏ với `CS8618: Non-nullable property must contain a non-null value when exiting constructor`.
+  - **Nguyên nhân:** `Nullable` và `TreatWarningsAsErrors` đều bật từ Buổi 00. Mọi property kiểu `string` trong model phải có giá trị khởi tạo (`= string.Empty`) hoặc khai báo là `string?`. Code mẫu ở Bước 3.2 đã làm đúng — nếu bạn tự gõ lại thì đừng bỏ sót phần khởi tạo.
+
 ## 5. Checklist nghiệm thu Buổi 03
 - [ ] Database file được cấu hình tạo đúng tại `FileSystem.AppDataDirectory`.
 - [ ] Hai class `Category` và `Transaction` định nghĩa đủ các thuộc tính (Guid, long, IsDeleted, SyncState).
 - [ ] Gọi thử `SaveTransactionAsync()` và `GetTransactionsAsync()` trong hàm kiểm tra không gặp deadlock.
+- [ ] Ghi một bản ghi rồi đọc lại: `UpdatedAt.Kind` phải là `Utc`, không phải `Unspecified`.
+- [ ] Build xanh cả 4 target, 0 warning (nhớ `Nullable` và `TreatWarningsAsErrors` đang bật).
 
 ---
 
