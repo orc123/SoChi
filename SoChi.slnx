@@ -6,6 +6,29 @@
     <File Path="docs/HUONG-DAN-TUNG-BUOI.md" />
     <File Path="global.json" />
   </Folder>
+  <Folder Name="/Solution Items/docs-buoi/">
+    <File Path="docs/buoi/buoi-00.md" />
+    <File Path="docs/buoi/buoi-01.md" />
+    <File Path="docs/buoi/buoi-02.md" />
+    <File Path="docs/buoi/buoi-03.md" />
+    <File Path="docs/buoi/buoi-04.md" />
+    <File Path="docs/buoi/buoi-04b.md" />
+    <File Path="docs/buoi/buoi-05.md" />
+    <File Path="docs/buoi/buoi-06.md" />
+    <File Path="docs/buoi/buoi-07.md" />
+    <File Path="docs/buoi/buoi-08.md" />
+    <File Path="docs/buoi/buoi-09.md" />
+    <File Path="docs/buoi/buoi-10.md" />
+    <File Path="docs/buoi/buoi-11.md" />
+    <File Path="docs/buoi/buoi-12.md" />
+    <File Path="docs/buoi/buoi-13.md" />
+    <File Path="docs/buoi/buoi-14.md" />
+    <File Path="docs/buoi/buoi-15.md" />
+    <File Path="docs/buoi/buoi-16.md" />
+    <File Path="docs/buoi/buoi-17.md" />
+    <File Path="docs/buoi/phu-luc-a.md" />
+    <File Path="docs/buoi/phu-luc-b.md" />
+  </Folder>
   <Folder Name="/src/" />
   <Folder Name="/src/Api/">
     <Project Path="src/Api/SoChi.Api/SoChi.Api.csproj" Id="2213ef24-f650-460f-a3a1-f14aeef8f21d" />
