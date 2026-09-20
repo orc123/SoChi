@@ -587,8 +587,25 @@ private async Task CancelAsync()
 ### Bước 3.1: Cài đặt thư viện SQLite
 ```powershell
 dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package sqlite-net-pcl
-dotnet add src/Client/SoChi.Client/SoChi.Client.csproj package SQLitePCLRaw.bundle_green
 ```
+
+**Chỉ một package duy nhất.** Nhiều hướng dẫn trên mạng bảo cài kèm `SQLitePCLRaw.bundle_green` — **đừng làm theo**. Bản mới của `sqlite-net-pcl` (1.11.285 trở lên) đã tự kéo về `SQLitePCLRaw.core` 3.0.3, `SQLitePCLRaw.provider.e_sqlite3` 3.0.3 và `SourceGear.sqlite3` 3.53.3. Thêm `bundle_green` vào chỉ tổ kéo ngược một nhánh phụ thuộc cũ kỹ, và nhánh đó đang dính lỗ hổng bảo mật (xem phần Bẫy bên dưới).
+
+Kiểm tra cây phụ thuộc thực tế:
+```powershell
+dotnet list src/Client/SoChi.Client/SoChi.Client.csproj package --include-transitive
+```
+Phải thấy `SQLitePCLRaw.*` ở nhánh **3.0.x**, không phải 2.1.x.
+
+**Về ba mảnh ghép của SQLite trong .NET** — hiểu để không cài thừa:
+
+| Thành phần | Vai trò |
+|---|---|
+| `sqlite-net-pcl` | ORM — biến class C# thành bảng, sinh câu SQL. Đây là thứ bạn gọi trong code. |
+| `SQLitePCLRaw.*` | Lớp trung gian gọi xuống thư viện native |
+| `SourceGear.sqlite3` | Bản biên dịch native của SQLite cho từng nền tảng (`.so`, `.dylib`, `.dll`) |
+
+Các gói tên `bundle_*` chỉ là những **combo đóng gói sẵn** của hai tầng dưới. Khi ORM đã khai báo đủ phụ thuộc rồi thì bạn không cần combo nào cả.
 
 ### Bước 3.2: Định nghĩa các Enum và Model
 Tạo file `src/Client/SoChi.Client/Models/Enums.cs`:
@@ -815,6 +832,15 @@ builder.Services.AddSingleton<ITransactionRepository, SqliteTransactionRepositor
   ```
   - **Khắc phục:** Luôn tuân thủ cơ chế `InitializeAsync()` kết hợp SemaphoreSlim như hướng dẫn ở trên.
 
+- **Lỗi:** Restore thất bại với `NU1903: Warning As Error: Package 'SQLitePCLRaw.lib.e_sqlite3' 2.1.11 has a known high severity vulnerability`, kèm dòng `Rolling back package changes`.
+  - **Nguyên nhân:** Bạn đã cài `SQLitePCLRaw.bundle_green`. Gói này dừng lại ở bản 2.1.11 và kéo theo `SQLitePCLRaw.lib.e_sqlite3` 2.1.11 đang có cảnh báo bảo mật. Bản vá nằm ở 2.1.13, nhưng `bundle_green` không được cập nhật để dùng nó.
+  - **Vì sao nó là *error* chứ không phải *warning*:** từ .NET 8, **NuGet Audit** bật sẵn — mỗi lần restore, NuGet đối chiếu danh sách package với cơ sở dữ liệu lỗ hổng của GitHub Advisory và phát cảnh báo `NU1903`. Cấu hình `TreatWarningsAsErrors=true` từ Buổi 00 biến cảnh báo đó thành lỗi, và restore bị **rollback** — nghĩa là package không được thêm vào `.csproj` chút nào.
+  - **Khắc phục:** gỡ `bundle_green`, chỉ giữ `sqlite-net-pcl`:
+    ```powershell
+    dotnet remove src/Client/SoChi.Client/SoChi.Client.csproj package SQLitePCLRaw.bundle_green
+    ```
+  - **Đừng tắt cảnh báo này.** Sẽ có người khuyên bạn thêm `<NoWarn>$(NoWarn);NU1903</NoWarn>` hoặc `<NuGetAudit>false</NuGetAudit>`. Làm vậy là bịt mắt mình trước một lỗ hổng thật, chứ không phải sửa nó. Cách xử lý đúng với `NU1903` luôn là **nâng cấp hoặc bỏ package có vấn đề** — ở đây may mắn là bỏ được hẳn vì nó vốn thừa.
+  - **Bài học rộng hơn:** `TreatWarningsAsErrors` bật từ Buổi 00 vừa chặn bạn đúng lúc. Nếu tắt nó, package dính lỗ hổng đã lặng lẽ đi vào dự án và bạn sẽ không bao giờ biết.
 - **Lỗi:** `UpdatedAt` đọc từ SQLite ra có `Kind = Unspecified` thay vì `Utc`, dù lúc ghi vào là `DateTime.UtcNow`.
   - **Nguyên nhân:** `sqlite-net-pcl` mặc định lưu `DateTime` dưới dạng **ticks** (`storeDateTimeAsTicks: true`). Lúc đọc ra nó dựng lại bằng `new DateTime(ticks)` — mà constructor này luôn cho `Kind = Unspecified`. Thông tin "đây là giờ UTC" bị mất sạch.
   - **Vì sao nguy hiểm:** ở Buổi 13–14, DTO gửi lên server sẽ được `System.Text.Json` tuần tự hóa **không có hậu tố `Z`**. Server PostgreSQL nhận vào rồi diễn giải theo kiểu khác, khiến so sánh last-write-wins sai lệch đúng bằng chênh lệch múi giờ (7 tiếng ở Việt Nam). Triệu chứng sẽ là "bản sửa cũ hơn lại thắng" — cực khó truy vì không có lỗi nào được ném ra.
@@ -841,6 +867,7 @@ builder.Services.AddSingleton<ITransactionRepository, SqliteTransactionRepositor
 - [ ] Hai class `Category` và `Transaction` định nghĩa đủ các thuộc tính (Guid, long, IsDeleted, SyncState).
 - [ ] Gọi thử `SaveTransactionAsync()` và `GetTransactionsAsync()` trong hàm kiểm tra không gặp deadlock.
 - [ ] Ghi một bản ghi rồi đọc lại: `UpdatedAt.Kind` phải là `Utc`, không phải `Unspecified`.
+- [ ] `dotnet list ... package --include-transitive` cho thấy `SQLitePCLRaw.*` ở nhánh **3.0.x**, không còn dấu vết 2.1.x.
 - [ ] Build xanh cả 4 target, 0 warning (nhớ `Nullable` và `TreatWarningsAsErrors` đang bật).
 
 ---

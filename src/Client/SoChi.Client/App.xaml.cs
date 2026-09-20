@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-
-namespace SoChi.Client;
+﻿namespace SoChi.Client;
 
 public partial class App : Application
 {

@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 
+using SoChi.Client.Services;
 using SoChi.Client.ViewModels;
 using SoChi.Client.Views;
 
@@ -31,6 +32,8 @@ public static class MauiProgram
         builder.Services.AddTransient<StatisticsPage>();
         builder.Services.AddTransient<TransactionsPage>();
         builder.Services.AddTransient<TransactionFormPage>();
+
+        builder.Services.AddSingleton<ITransactionRepository, TransactionRepository>();
 
 #if DEBUG
         builder.Logging.AddDebug();
