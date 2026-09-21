@@ -1,4 +1,4 @@
-﻿using SoChi.Dtos.Data;
+﻿using SoChi.Client.Dtos;
 
 namespace SoChi.Client.Services;
 

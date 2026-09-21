@@ -2,12 +2,34 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:SoChi.Client.ViewModels"
+             xmlns:dto="clr-namespace:SoChi.Client.Dtos"
              x:Class="SoChi.Client.Views.TransactionsPage"
              x:DataType="vm:TransactionsViewModel"
              Title="{Binding Title}">
-    <VerticalStackLayout Padding="20" VerticalOptions="Center">
-        <Label Text="Màn hình giao dịch"
-               HorizontalOptions="Center"
-               FontSize="10" />
-    </VerticalStackLayout>
+    <CollectionView ItemsSource="{Binding Transactions}">
+        <CollectionView.ItemTemplate>
+            <DataTemplate x:DataType="dto:TransactionDto">
+                <Border StrokeThickness="1"
+                        Stroke="#E5E7EB"
+                        Padding="12"
+                        Margin="10,4">
+                    <Grid ColumnDefinitions="*, Auto">
+                        <VerticalStackLayout Grid.Column="0">
+                            <Label Text="{Binding Note}"
+                                   FontAttributes="Bold"
+                                   FontSize="16" />
+                            <Label Text="{Binding OccurredOn, StringFormat='{0:dd/MM/yyyy}'}"
+                                   TextColor="Gray"
+                                   FontSize="12" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="1"
+                               Text="{Binding Amount, StringFormat='{0:N0} đ'}"
+                               FontAttributes="Bold"
+                               FontSize="16"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </CollectionView.ItemTemplate>
+    </CollectionView>
 </ContentPage>

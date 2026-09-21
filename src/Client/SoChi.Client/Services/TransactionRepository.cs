@@ -1,6 +1,6 @@
 ﻿using SoChi.Client.Data;
 using SoChi.Client.Data.Enums;
-using SoChi.Dtos.Data;
+using SoChi.Client.Dtos;
 using SoChi.Shared.Extensions;
 
 using SQLite;
@@ -60,7 +60,7 @@ public class TransactionRepository : ITransactionRepository
             await _database.CreateTableAsync<Transaction>();
 
             _isInitialized = true;
-
+            await SeedDefaultCategoriesAsync();          
         }
         finally
         {
@@ -115,5 +115,26 @@ public class TransactionRepository : ITransactionRepository
             await InitializeAsync();
         }
         return _database!;
+    }
+
+    public async Task SeedDefaultCategoriesAsync()
+    {
+        var db = await GetDatabaseAsync();
+        var count = await db.Table<Category>().CountAsync();
+        if (count > 0) return;
+
+        var defaults = new List<Category>
+    {
+        new() { Name = "Ăn uống", IconGlyph = "🍔", ColorHex = "#EF4444", Kind = TransactionKind.Expense },
+        new() { Name = "Di chuyển", IconGlyph = "🚗", ColorHex = "#F59E0B", Kind = TransactionKind.Expense },
+        new() { Name = "Nhà cửa", IconGlyph = "🏠", ColorHex = "#3B82F6", Kind = TransactionKind.Expense },
+        new() { Name = "Mua sắm", IconGlyph = "🛍️", ColorHex = "#EC4899", Kind = TransactionKind.Expense },
+        new() { Name = "Hóa đơn & Dịch vụ", IconGlyph = "⚡", ColorHex = "#8B5CF6", Kind = TransactionKind.Expense },
+        new() { Name = "Giải trí", IconGlyph = "🎬", ColorHex = "#10B981", Kind = TransactionKind.Expense },
+        new() { Name = "Tiền lương", IconGlyph = "💰", ColorHex = "#10B981", Kind = TransactionKind.Income },
+        new() { Name = "Thu nhập khác", IconGlyph = "💵", ColorHex = "#06B6D4", Kind = TransactionKind.Income }
+    };
+
+        await db.InsertAllAsync(defaults);
     }
 }

@@ -2,15 +2,41 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:SoChi.Client.ViewModels"
+             xmlns:dto="clr-namespace:SoChi.Client.Dtos"
              x:Class="SoChi.Client.Views.TransactionFormPage"
              x:DataType="vm:TransactionFormViewModel"
              Title="{Binding Title}">
-    <VerticalStackLayout Padding="20" VerticalOptions="Center">
-        <Label Text="Màn hình tạo giao dịch"
-               HorizontalOptions="Center"
-               FontSize="10" />
+    <ScrollView>
+        <VerticalStackLayout Padding="20"
+                             Spacing="16">
+            <Label Text="Số tiền (VNĐ)"
+                   FontAttributes="Bold" />
+            <Entry Text="{Binding AmountText}"
+                   Keyboard="Numeric"
+                   Placeholder="Nhập số tiền"
+                   FontSize="24" />
+            <Label Text="Danh mục"
+                   FontAttributes="Bold" />
+            <Picker ItemsSource="{Binding Categories}"
+                    ItemDisplayBinding="{Binding Name, x:DataType=dto:CategoryDto}"
+                    SelectedItem="{Binding SelectedCategory}" />
 
-        <Button Text="+ Đóng Giao Dịch"
-                Command="{Binding CloseCommand}" />
-    </VerticalStackLayout>
+            <Label Text="Ngày chi/thu"
+                   FontAttributes="Bold" />
+            <DatePicker Date="{Binding OccurredOn}" />
+
+            <Label Text="Ghi chú"
+                   FontAttributes="Bold" />
+            <Entry Text="{Binding Note}"
+                   Placeholder="Ví dụ: Ăn trưa phở bò" />
+
+            <Button Text="Lưu giao dịch"
+                    Command="{Binding SaveCommand}"
+                    BackgroundColor="#3B82F6"
+                    TextColor="White"
+                    HeightRequest="50"
+                    Margin="0,20,0,0" />
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

@@ -3,5 +3,5 @@
 public enum TransactionKind
 {
     Expense = 0, // Chi tiêu
-    Imcome = 1 // Thu nhập
+    Income = 1 // Thu nhập
 }

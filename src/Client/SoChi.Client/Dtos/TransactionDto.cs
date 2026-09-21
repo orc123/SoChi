@@ -1,6 +1,6 @@
 ﻿using SoChi.Client.Data.Enums;
 
-namespace SoChi.Dtos.Data;
+namespace SoChi.Client.Dtos;
 
 public class TransactionDto
 {

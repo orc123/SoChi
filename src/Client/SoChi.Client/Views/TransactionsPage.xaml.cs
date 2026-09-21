@@ -9,4 +9,13 @@ public partial class TransactionsPage : ContentPage
 		InitializeComponent();
         BindingContext = viewModel;
 	}
+
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        if (BindingContext is TransactionsViewModel viewModel)
+        {
+            await viewModel.LoadTransactionsAsync();
+        }
+    }
 }
